@@ -22,7 +22,7 @@ def open_carpool_window():
     home_button = tk.Button(nav_frame, text="Home", bg="#a0a0a0", fg="white", font=("Helvetica", 12, "bold"), bd=0, padx=10, pady=5, activebackground="#808080", activeforeground="white")
     home_button.pack(side="left", padx=5)
 
-    profile_button = tk.Button(nav_frame, text="", bg="#a0a0a0", fg="white", font=("Helvetica", 12, "bold"), bd=0, padx=10, pady=5, activebackground="#808080", activeforeground="white")
+    profile_button = tk.Button(nav_frame, text="Profile", bg="#a0a0a0", fg="white", font=("Helvetica", 12, "bold"), bd=0, padx=10, pady=5, activebackground="#808080", activeforeground="white")
     profile_button.pack(side="left", padx=5)
 
     settings_button = tk.Button(nav_frame, text="Settings", bg="#a0a0a0", fg="white", font=("Helvetica", 12, "bold"), bd=0, padx=10, pady=5, activebackground="#808080", activeforeground="white")
