@@ -96,5 +96,5 @@ def submit(carpool_name, car_type, person_limit, starting_point, starting_time, 
     print("Car Type:", car_type.get())
     print("Person Limit:", person_limit.get())
     print("Starting Point:", starting_point.get())
-    print("Starting Time:", starting_time.get())
-    print("Ending Time:", ending_time.get())
+    print("Pickup Time:", starting_time.get())
+    print("Dropoff Time:", ending_time.get())
