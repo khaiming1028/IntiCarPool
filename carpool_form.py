@@ -60,14 +60,14 @@ def open_carpool_window():
     starting_point_entry = ttk.Entry(carpool_window, textvariable=starting_point)
     starting_point_entry.grid(column=1, row=4, padx=10, pady=10)
 
-    # Starting Time
+    # Pickup Time
     starting_time_label = ttk.Label(carpool_window, text="Starting Time:")
     starting_time_label.grid(column=0, row=5, padx=10, pady=10, sticky=tk.W)
     starting_time = tk.StringVar()
     starting_time_entry = ttk.Entry(carpool_window, textvariable=starting_time)
     starting_time_entry.grid(column=1, row=5, padx=10, pady=10)
 
-    # Ending Time
+    # Dropoff Time
     ending_time_label = ttk.Label(carpool_window, text="Ending Time:")
     ending_time_label.grid(column=0, row=6, padx=10, pady=10, sticky=tk.W)
     ending_time = tk.StringVar()
