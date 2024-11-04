@@ -114,7 +114,7 @@ app.configure(bg="#ffffff")  # Set background color to white
 
 # Load the image (make sure 'logo.png' is in the same directory or specify the path)
 try:
-    logo_image = tk.PhotoImage(file="logo.png")
+    logo_image = tk.PhotoImage(file="INTIlogo.png")
     logo_label = tk.Label(app, image=logo_image, bg="#ffffff")  # Match the background color
     logo_label.pack(pady=10)
 except Exception as e:
