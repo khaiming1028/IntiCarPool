@@ -51,9 +51,7 @@ def open_student_page():
         pickup_time = carpool_pickup_time_entry.get()
         dropoff_time = carpool_dropoff_time_entry.get()
         status = selected_status.get()
-    def testzy():
-        ghfghgf
-    def testjx():
+    
         
 
         # Validate input
