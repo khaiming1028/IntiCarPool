@@ -2,8 +2,29 @@ import tkinter as tk
 from tkinter import messagebox
 import carpool_form  # Import the renamed module
 import carpool_list
+import mysql.connector
+
+
+# MySQL Database Configuration
+DB_HOST = "localhost"  # Replace with your database host
+DB_USER = "root"       # Replace with your MySQL username
+DB_PASSWORD = ""  # Replace with your MySQL password
+DB_NAME = "carpool_system"    # Replace with your database name
 
 def open_student_page():
+     # Connect to MySQL Database
+    try:
+        conn = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
+        )
+        cursor = conn.cursor()
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error connecting to database: {err}")
+        return
+    
     # Create the carpool window
     carpool_app = tk.Tk()
     carpool_app.title("Carpool Options")
@@ -17,11 +38,38 @@ def open_student_page():
         create_carpool_frame.pack_forget()
         main_menu_frame.pack()
         page_title_label.config(text="Home")
-
-    def create_carpool():
+    def show_create_carpool_page():
         main_menu_frame.pack_forget()
         create_carpool_frame.pack()
         page_title_label.config(text="Create Carpool")
+
+    def create_carpool():
+       # Get user input
+        carpool_name = carpool_name_entry.get()
+        available_seat = carpool_available_seat_entry.get()
+        pickup_point = carpool_pickup_point_entry.get()
+        pickup_time = carpool_pickup_time_entry.get()
+        dropoff_time = carpool_dropoff_time_entry.get()
+        status = selected_status.get()
+
+        # Validate input
+        if not all([carpool_name, available_seat, pickup_point, pickup_time, dropoff_time]):
+            messagebox.showerror("Input Error", "All fields are required!")
+            return
+
+        try:
+            # Insert data into the database
+            query = """
+                INSERT INTO carpool (carpool_name, available_seat, pickup_point, pickup_time, dropoff_time, status)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            values = (carpool_name, available_seat, pickup_point, pickup_time, dropoff_time, status)
+            cursor.execute(query, values)
+            conn.commit()
+
+            messagebox.showinfo("Success", "Carpool created successfully!")
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error inserting data: {err}")
 
     def search_carpool():
         # Implement search carpool functionality
@@ -62,7 +110,7 @@ def open_student_page():
     search_carpool_button = tk.Button(navbar_frame, text="Search Carpool", command=search_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     search_carpool_button.pack(side="left", padx=10, pady=10)
 
-    create_carpool_nav_button = tk.Button(navbar_frame, text="Create Carpool", command=create_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    create_carpool_nav_button = tk.Button(navbar_frame, text="Create Carpool", command=show_create_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     create_carpool_nav_button.pack(side="left", padx=10, pady=10)
 
     joined_carpool_button = tk.Button(navbar_frame, text="Joined Carpool", command=joined_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
@@ -110,27 +158,56 @@ def open_student_page():
     # Create Carpool frame
     create_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
 
-    # Carpool Name Label and Entry
+     # Carpool Name Label and Entry
     carpool_name_label = tk.Label(create_carpool_frame, text="Carpool Name:", font=("Arial", 12), bg="#ffffff")
     carpool_name_label.grid(row=0, column=0, padx=10, pady=5, sticky="e")
     carpool_name_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
     carpool_name_entry.grid(row=0, column=1, padx=10, pady=5)
 
-    # Carpool Date Label and Entry
-    carpool_date_label = tk.Label(create_carpool_frame, text="Date:", font=("Arial", 12), bg="#ffffff")
-    carpool_date_label.grid(row=1, column=0, padx=10, pady=5, sticky="e")
-    carpool_date_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_date_entry.grid(row=1, column=1, padx=10, pady=5)
+    # Carpool Available Seats Label and Entry
+    carpool_available_seat_label = tk.Label(create_carpool_frame, text="Available Seats:", font=("Arial", 12), bg="#ffffff")
+    carpool_available_seat_label.grid(row=1, column=0, padx=10, pady=5, sticky="e")
+    carpool_available_seat_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
+    carpool_available_seat_entry.grid(row=1, column=1, padx=10, pady=5)
+
+    # Carpool Pickup Point Label and Entry
+    carpool_pickup_point_label = tk.Label(create_carpool_frame, text="Pickup Point:", font=("Arial", 12), bg="#ffffff")
+    carpool_pickup_point_label.grid(row=2, column=0, padx=10, pady=5, sticky="e")
+    carpool_pickup_point_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
+    carpool_pickup_point_entry.grid(row=2, column=1, padx=10, pady=5)
 
     # Carpool Time Label and Entry
-    carpool_time_label = tk.Label(create_carpool_frame, text="Time:", font=("Arial", 12), bg="#ffffff")
-    carpool_time_label.grid(row=2, column=0, padx=10, pady=5, sticky="e")
-    carpool_time_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_time_entry.grid(row=2, column=1, padx=10, pady=5)
+    carpool_pickup_time_label = tk.Label(create_carpool_frame, text="Time:", font=("Arial", 12), bg="#ffffff")
+    carpool_pickup_time_label.grid(row=3, column=0, padx=10, pady=5, sticky="e")
+    carpool_pickup_time_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
+    carpool_pickup_time_entry.grid(row=3, column=1, padx=10, pady=5)
+
+    # Carpool Dropoff Time Label and Entry
+    carpool_dropoff_time_label = tk.Label(create_carpool_frame, text="Dropoff Time:", font=("Arial", 12), bg="#ffffff")
+    carpool_dropoff_time_label.grid(row=4, column=0, padx=10, pady=5, sticky="e")
+    carpool_dropoff_time_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
+    carpool_dropoff_time_entry.grid(row=4, column=1, padx=10, pady=5)
+
+    # Create the label for carpool status
+    carpool_status_label = tk.Label(create_carpool_frame, text="Status:", font=("Arial", 12), bg="#ffffff")
+    carpool_status_label.grid(row=5, column=0, padx=10, pady=5, sticky="e")
+
+    # Define the dropdown options for carpool status
+    status_options = ["Available", "Closed"]
+
+    # Create a StringVar to hold the selected status
+    selected_status = tk.StringVar()
+    selected_status.set(status_options[0])  # Set the default value to "Available"
+
+    # Create the dropdown (OptionMenu) for carpool status
+    carpool_status_dropdown = tk.OptionMenu(create_carpool_frame, selected_status, *status_options)
+    carpool_status_dropdown.config(font=("Arial", 12), width=27)  # Customize dropdown style
+    carpool_status_dropdown.grid(row=5, column=1, padx=10, pady=5)
 
     # Submit Button
-    submit_button = tk.Button(create_carpool_frame, text="Submit", font=("Arial", 12), bg="green", fg="white", width=10)
-    submit_button.grid(row=3, columnspan=2, pady=10)
+    submit_button = tk.Button(create_carpool_frame, text="Submit", command=create_carpool, font=("Arial", 12), bg="green", fg="white", width=10)
+    submit_button.grid(row=6, columnspan=2, pady=10)
+
 
     # Footer frame
     footer_frame = tk.Frame(carpool_app, bg="red")
@@ -140,3 +217,5 @@ def open_student_page():
     footer_label.pack(pady=10)
 
     carpool_app.mainloop()
+    cursor.close()
+    conn.close()
