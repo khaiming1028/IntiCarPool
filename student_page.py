@@ -51,7 +51,8 @@ def open_student_page():
         pickup_time = carpool_pickup_time_entry.get()
         dropoff_time = carpool_dropoff_time_entry.get()
         status = selected_status.get()
-
+    
+        
 
         # Validate input
         if not all([carpool_name, available_seat, pickup_point, pickup_time, dropoff_time]):
