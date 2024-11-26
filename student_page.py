@@ -84,6 +84,33 @@ def open_student_page():
     def manage_carpool():
         # Implement manage carpool functionality
         page_title_label.config(text="Manage Carpool")
+        
+    def view_carpool():
+    # Clear previous frames and switch to the View Carpool frame
+        create_carpool_frame.pack_forget()
+        main_menu_frame.pack_forget()
+        view_carpool_frame.pack(fill="both", expand=True)
+        page_title_label.config(text="View Carpool")
+
+        # Clear the listbox to refresh data
+        carpool_listbox.delete(0, tk.END)
+
+        try:
+            # Fetch all data from the carpool table
+            query = "SELECT carpool_name, available_seat, pickup_point, pickup_time, dropoff_time, status FROM carpool"
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            if not rows:
+                carpool_listbox.insert(tk.END, "No carpools found.")
+            else:
+                for row in rows:
+                    carpool_listbox.insert(
+                        tk.END,
+                        f"Name: {row[0]}, Seats: {row[1]}, Pickup: {row[2]}, Pickup Time: {row[3]}, Dropoff Time: {row[4]}, Status: {row[5]}"
+                    )
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error fetching data: {err}")
 
     def profile():
         # Implement profile functionality
@@ -117,6 +144,9 @@ def open_student_page():
 
     joined_carpool_button = tk.Button(navbar_frame, text="Joined Carpool", command=joined_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     joined_carpool_button.pack(side="left", padx=10, pady=10)
+
+    view_carpool_button = tk.Button(navbar_frame, text="View Carpool", command=view_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    view_carpool_button.pack(side="left", padx=10, pady=10)
 
     # Dropdown menu for "My Profile"
     profile_menu = tk.Menubutton(navbar_frame, text="My Profile", font=button_font, bg=button_bg, fg=button_fg, bd=0, relief="flat")
@@ -210,7 +240,121 @@ def open_student_page():
     submit_button = tk.Button(create_carpool_frame, text="Submit", command=create_carpool, font=("Arial", 12), bg="green", fg="white", width=10)
     submit_button.grid(row=6, columnspan=2, pady=10)
 
+        # View Carpool frame
+    view_carpool_frame = tk.Frame(carpool_app, bg="#f5f5f5")  # Light background color
 
+    # Title label with enhanced styling
+    view_carpool_title_label = tk.Label(
+        view_carpool_frame,
+        text="Available Carpools",
+        font=("Arial", 16, "bold"),
+        bg="#f5f5f5",
+        fg="#333333"  # Dark gray text
+    )
+    view_carpool_title_label.pack(pady=(20, 10))
+
+    # Frame to hold the Listbox and scrollbar
+    carpool_list_frame = tk.Frame(view_carpool_frame, bg="#f5f5f5")
+    carpool_list_frame.pack(pady=10, padx=20)
+
+    # Scrollbar for the Listbox
+    scrollbar = tk.Scrollbar(carpool_list_frame)
+    scrollbar.pack(side="right", fill="y")
+
+    # Listbox to display carpool data with styled borders and font
+    carpool_listbox = tk.Listbox(
+        carpool_list_frame,
+        font=("Arial", 12),
+        width=80,
+        height=15,
+        bg="#ffffff",
+        fg="#333333",
+        bd=2,
+        relief="groove",  # Border style
+        yscrollcommand=scrollbar.set
+    )
+    carpool_listbox.pack(side="left", fill="both", expand=True)
+    scrollbar.config(command=carpool_listbox.yview)
+
+    # Fetch and Display Carpool Data with a Join Button
+    def fetch_and_display_carpools():
+        carpool_listbox.delete(0, tk.END)  # Clear previous entries
+        try:
+            query = "SELECT carpool_id, carpool_name, available_seat, pickup_point, pickup_time, status FROM carpool"
+            cursor.execute(query)
+            results = cursor.fetchall()
+
+            for carpool in results:
+                carpool_id, name, seat, pickup, time, status = carpool
+                display_text = (
+                    f"Carpool ID: {carpool_id} | Name: {name} | Seats: {seat} | "
+                    f"Pickup: {pickup} | Time: {time} | Status: {status}"
+                )
+                carpool_listbox.insert(tk.END, display_text)
+
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error fetching data: {err}")
+
+    # Call fetch function to display carpools
+    fetch_and_display_carpools()
+
+    # Join Carpool Functionality
+    def join_carpool():
+        try:
+            # Get selected carpool ID from the listbox
+            selected_index = carpool_listbox.curselection()
+            if not selected_index:
+                messagebox.showerror("Selection Error", "Please select a carpool to join.")
+                return
+
+            selected_carpool = carpool_listbox.get(selected_index)
+            carpool_id = selected_carpool.split('|')[0].split(': ')[1]  # Extract carpool ID from text
+
+            # Insert into carpool_application table
+            query = """
+                INSERT INTO carpool_application (carpool_id, user_id, status)
+                VALUES (%s, %s, %s)
+            """
+            values = (carpool_id, 1, "Pending")  # Replace `1` with the logged-in user ID
+            cursor.execute(query)
+            conn.commit()
+
+            messagebox.showinfo("Success", f"You have successfully applied to join Carpool ID {carpool_id}.")
+
+        except mysql.connector.IntegrityError:
+            messagebox.showerror("Error", "You have already applied to this carpool.")
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error joining carpool: {err}")
+
+    # Join Carpool Button
+    join_carpool_button = tk.Button(
+        view_carpool_frame,
+        text="Join Selected Carpool",
+        command=join_carpool,
+        font=("Arial", 12, "bold"),
+        bg="#28a745",  # Green background
+        fg="white",
+        bd=0,
+        padx=10,
+        pady=5
+    )
+    join_carpool_button.pack(pady=20)
+
+    # Back to Home Button
+    back_to_home_button = tk.Button(
+        view_carpool_frame,
+        text="Back to Home",
+        command=show_main_menu,
+        font=("Arial", 12, "bold"),
+        bg="#007bff",  # Blue background
+        fg="white",
+        bd=0,
+        padx=10,
+        pady=5
+    )
+    back_to_home_button.pack(pady=10)
+
+   
     # Footer frame
     footer_frame = tk.Frame(carpool_app, bg="red")
     footer_frame.pack(fill="x", side="bottom")
