@@ -11,7 +11,7 @@ DB_USER = "root"       # Replace with your MySQL username
 DB_PASSWORD = ""  # Replace with your MySQL password
 DB_NAME = "carpool_system"    # Replace with your database name
 
-def open_student_page():
+def open_admin_page():
      # Connect to MySQL Database
     try:
         conn = mysql.connector.connect(
@@ -73,6 +73,103 @@ def open_student_page():
         except mysql.connector.Error as err:
             messagebox.showerror("Database Error", f"Error inserting data: {err}")
 
+    def open_student_list():
+        # Create a new window for displaying the student list
+        student_list_window = tk.Toplevel(carpool_app)
+        student_list_window.title("Student List")
+        student_list_window.geometry("500x400")
+
+        # Add a scrollbar
+        scrollbar = tk.Scrollbar(student_list_window)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Create a listbox for displaying usernames and car names
+        listbox = tk.Listbox(student_list_window, font=("Arial", 12), width=50)
+        listbox.pack(fill=tk.BOTH, expand=True)
+        listbox.config(yscrollcommand=scrollbar.set)
+        scrollbar.config(command=listbox.yview)
+
+        button_frame = tk.Frame(student_list_window)
+        button_frame.pack(fill=tk.X, pady=10)
+
+        
+
+        # Connect to the database
+        try:
+            conn = mysql.connector.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME
+            )
+            cursor = conn.cursor()
+
+            # Fetch usernames and car names from the User table
+            query = "SELECT username, car_name FROM User"
+            cursor.execute(query)
+            results = cursor.fetchall()
+
+            # Populate the listbox with results
+            for row in results:
+                username, car_name = row
+                car_name = car_name if car_name else "No Car Info"  # Handle missing car names
+                listbox.insert(tk.END, f"Username: {username} | Car: {car_name}")
+
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error: {err}")
+
+        # Delete user function
+        def delete_user():
+            selected_index = listbox.curselection()
+            if not selected_index:
+                messagebox.showwarning("No Selection", "Please select a user to delete.")
+                return
+
+            # Get the username from the selected index
+            selected_entry = listbox.get(selected_index[0])
+            username = selected_entry.split(" | ")[0].replace("Username: ", "").strip()
+
+            # Confirm deletion
+            confirm = messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this user?")
+            if confirm:
+                try:
+                    # Debugging: Print username to ensure correctness
+                    print(f"Attempting to delete user: {username}")
+
+                    # Delete the user from the database
+                    delete_query = "DELETE FROM User WHERE username = %s"
+                    cursor.execute(delete_query, (username,))
+                
+                    # Commit changes to the database
+                    conn.commit()
+
+                    # Check if any row was affected
+                    if cursor.rowcount > 0:
+                        # Remove the user from the listbox
+                        listbox.delete(selected_index[0])
+                        messagebox.showinfo("Success", f"User '{username}' deleted successfully.")
+                    else:
+                        messagebox.showerror("Error", f"No user found with username '{username}'. Deletion failed.")
+
+                except mysql.connector.Error as err:
+                    messagebox.showerror("Database Error", f"Error: {err}")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Unexpected error: {e}")
+
+        # Add Delete Button
+        delete_button = tk.Button(button_frame, text="Delete User", command=delete_user, font=("Arial", 12), bg="red", fg="white")
+        delete_button.pack(side=tk.LEFT, padx=10)
+
+        # Close database connection when window is closed
+        def on_close():
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+            student_list_window.destroy()
+
+        student_list_window.protocol("WM_DELETE_WINDOW", on_close)
+
     def search_carpool():
         # Implement search carpool functionality
         page_title_label.config(text="Search Carpool")
@@ -84,33 +181,6 @@ def open_student_page():
     def manage_carpool():
         # Implement manage carpool functionality
         page_title_label.config(text="Manage Carpool")
-        
-    def view_carpool():
-    # Clear previous frames and switch to the View Carpool frame
-        create_carpool_frame.pack_forget()
-        main_menu_frame.pack_forget()
-        view_carpool_frame.pack(fill="both", expand=True)
-        page_title_label.config(text="View Carpool")
-
-        # Clear the listbox to refresh data
-        carpool_listbox.delete(0, tk.END)
-
-        try:
-            # Fetch all data from the carpool table
-            query = "SELECT carpool_name, available_seat, pickup_point, pickup_time, dropoff_time, status FROM carpool"
-            cursor.execute(query)
-            rows = cursor.fetchall()
-
-            if not rows:
-                carpool_listbox.insert(tk.END, "No carpools found.")
-            else:
-                for row in rows:
-                    carpool_listbox.insert(
-                        tk.END,
-                        f"Name: {row[0]}, Seats: {row[1]}, Pickup: {row[2]}, Pickup Time: {row[3]}, Dropoff Time: {row[4]}, Status: {row[5]}"
-                    )
-        except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error fetching data: {err}")
 
     def profile():
         # Implement profile functionality
@@ -145,8 +215,8 @@ def open_student_page():
     joined_carpool_button = tk.Button(navbar_frame, text="Joined Carpool", command=joined_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     joined_carpool_button.pack(side="left", padx=10, pady=10)
 
-    view_carpool_button = tk.Button(navbar_frame, text="View Carpool", command=view_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
-    view_carpool_button.pack(side="left", padx=10, pady=10)
+    student_list_button = tk.Button(navbar_frame, text="Student List", command=open_student_list, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    student_list_button.pack(side="left", padx=10, pady=10)
 
     # Dropdown menu for "My Profile"
     profile_menu = tk.Menubutton(navbar_frame, text="My Profile", font=button_font, bg=button_bg, fg=button_fg, bd=0, relief="flat")
@@ -240,121 +310,7 @@ def open_student_page():
     submit_button = tk.Button(create_carpool_frame, text="Submit", command=create_carpool, font=("Arial", 12), bg="green", fg="white", width=10)
     submit_button.grid(row=6, columnspan=2, pady=10)
 
-        # View Carpool frame
-    view_carpool_frame = tk.Frame(carpool_app, bg="#f5f5f5")  # Light background color
 
-    # Title label with enhanced styling
-    view_carpool_title_label = tk.Label(
-        view_carpool_frame,
-        text="Available Carpools",
-        font=("Arial", 16, "bold"),
-        bg="#f5f5f5",
-        fg="#333333"  # Dark gray text
-    )
-    view_carpool_title_label.pack(pady=(20, 10))
-
-    # Frame to hold the Listbox and scrollbar
-    carpool_list_frame = tk.Frame(view_carpool_frame, bg="#f5f5f5")
-    carpool_list_frame.pack(pady=10, padx=20)
-
-    # Scrollbar for the Listbox
-    scrollbar = tk.Scrollbar(carpool_list_frame)
-    scrollbar.pack(side="right", fill="y")
-
-    # Listbox to display carpool data with styled borders and font
-    carpool_listbox = tk.Listbox(
-        carpool_list_frame,
-        font=("Arial", 12),
-        width=80,
-        height=15,
-        bg="#ffffff",
-        fg="#333333",
-        bd=2,
-        relief="groove",  # Border style
-        yscrollcommand=scrollbar.set
-    )
-    carpool_listbox.pack(side="left", fill="both", expand=True)
-    scrollbar.config(command=carpool_listbox.yview)
-
-    # Fetch and Display Carpool Data with a Join Button
-    def fetch_and_display_carpools():
-        carpool_listbox.delete(0, tk.END)  # Clear previous entries
-        try:
-            query = "SELECT carpool_id, carpool_name, available_seat, pickup_point, pickup_time, status FROM carpool"
-            cursor.execute(query)
-            results = cursor.fetchall()
-
-            for carpool in results:
-                carpool_id, name, seat, pickup, time, status = carpool
-                display_text = (
-                    f"Carpool ID: {carpool_id} | Name: {name} | Seats: {seat} | "
-                    f"Pickup: {pickup} | Time: {time} | Status: {status}"
-                )
-                carpool_listbox.insert(tk.END, display_text)
-
-        except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error fetching data: {err}")
-
-    # Call fetch function to display carpools
-    fetch_and_display_carpools()
-
-    # Join Carpool Functionality
-    def join_carpool():
-        try:
-            # Get selected carpool ID from the listbox
-            selected_index = carpool_listbox.curselection()
-            if not selected_index:
-                messagebox.showerror("Selection Error", "Please select a carpool to join.")
-                return
-
-            selected_carpool = carpool_listbox.get(selected_index)
-            carpool_id = selected_carpool.split('|')[0].split(': ')[1]  # Extract carpool ID from text
-
-            # Insert into carpool_application table
-            query = """
-                INSERT INTO carpool_application (carpool_id, user_id, status)
-                VALUES (%s, %s, %s)
-            """
-            values = (carpool_id, 1, "Pending")  # Replace `1` with the logged-in user ID
-            cursor.execute(query)
-            conn.commit()
-
-            messagebox.showinfo("Success", f"You have successfully applied to join Carpool ID {carpool_id}.")
-
-        except mysql.connector.IntegrityError:
-            messagebox.showerror("Error", "You have already applied to this carpool.")
-        except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error joining carpool: {err}")
-
-    # Join Carpool Button
-    join_carpool_button = tk.Button(
-        view_carpool_frame,
-        text="Join Selected Carpool",
-        command=join_carpool,
-        font=("Arial", 12, "bold"),
-        bg="#28a745",  # Green background
-        fg="white",
-        bd=0,
-        padx=10,
-        pady=5
-    )
-    join_carpool_button.pack(pady=20)
-
-    # Back to Home Button
-    back_to_home_button = tk.Button(
-        view_carpool_frame,
-        text="Back to Home",
-        command=show_main_menu,
-        font=("Arial", 12, "bold"),
-        bg="#007bff",  # Blue background
-        fg="white",
-        bd=0,
-        padx=10,
-        pady=5
-    )
-    back_to_home_button.pack(pady=10)
-
-   
     # Footer frame
     footer_frame = tk.Frame(carpool_app, bg="red")
     footer_frame.pack(fill="x", side="bottom")
