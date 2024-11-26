@@ -1,9 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
-import carpool_form  # Import the renamed module
-import carpool_list
 import mysql.connector
-
 
 # MySQL Database Configuration
 DB_HOST = "localhost"  # Replace with your database host
@@ -12,7 +9,7 @@ DB_PASSWORD = ""  # Replace with your MySQL password
 DB_NAME = "carpool_system"    # Replace with your database name
 
 def open_student_page():
-     # Connect to MySQL Database
+    # Connect to MySQL Database
     try:
         conn = mysql.connector.connect(
             host=DB_HOST,
@@ -38,21 +35,20 @@ def open_student_page():
         create_carpool_frame.pack_forget()
         main_menu_frame.pack()
         page_title_label.config(text="Home")
+        
     def show_create_carpool_page():
         main_menu_frame.pack_forget()
         create_carpool_frame.pack()
         page_title_label.config(text="Create Carpool")
 
     def create_carpool():
-       # Get user input
+        # Get user input
         carpool_name = carpool_name_entry.get()
         available_seat = carpool_available_seat_entry.get()
         pickup_point = carpool_pickup_point_entry.get()
         pickup_time = carpool_pickup_time_entry.get()
         dropoff_time = carpool_dropoff_time_entry.get()
         status = selected_status.get()
-    
-        
 
         # Validate input
         if not all([carpool_name, available_seat, pickup_point, pickup_time, dropoff_time]):
@@ -91,6 +87,8 @@ def open_student_page():
 
     def logout():
         carpool_app.destroy()
+        cursor.close()
+        conn.close()
 
     # Navbar frame
     navbar_frame = tk.Frame(carpool_app, bg="#ffffff")
@@ -136,7 +134,7 @@ def open_student_page():
 
     # Full-width bar for page title
     title_bar_frame = tk.Frame(carpool_app, bg="#000000")
-    title_bar_frame.pack(fill="x", pady=(0,40))
+    title_bar_frame.pack(fill="x", pady=(0, 40))
 
     page_title_label = tk.Label(title_bar_frame, text="Home", font=("Arial", 14, "bold"), bg="#000000", fg="#ffffff")
     page_title_label.pack(side="left", pady=15, padx=20)
@@ -144,23 +142,17 @@ def open_student_page():
     # Main menu frame
     main_menu_frame = tk.Frame(carpool_app, bg="#ffffff")
     main_menu_frame.pack()
-
-    # # Option 1: View Carpool
-    # view_carpool_button = tk.Button(main_menu_frame, text="View Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)
-    # view_carpool_button.pack(pady=10)
-
-    # # Option 2: Join Carpool
-    # join_carpool_button = tk.Button(main_menu_frame, text="Join Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)
-    # join_carpool_button.pack(pady=10)
-
-    # # Option 3: Create Carpool
-    # create_carpool_button = tk.Button(main_menu_frame, text="Create Carpool", command=create_carpool, font=("Arial", 12), bg="blue", fg="white", width=20)
-    # create_carpool_button.pack(pady=10)
+    tk.Label(main_menu_frame, text="Welcome to IICP Carpooling System", font=("Arial", 18, "bold"), bg="#ffffff").pack(pady=20)
+    tk.Label(main_menu_frame, text="Connect with fellow IICP students to carpool together to campus, reduce traffic congestion, and lower your carbon footprint!", font=("Arial", 12), bg="#ffffff").pack(pady=10)
+    car_image = tk.PhotoImage(file="homeCar.png")
+    car_image_label = tk.Label(main_menu_frame, image=car_image, bg="#ffffff")
+    car_image_label.pack(pady=20)
+    tk.Button(main_menu_frame, text="Search for Carpools", command=search_carpool, font=("Arial", 14), bg="#dd6f6f", fg="#ffffff").pack(pady=20)
 
     # Create Carpool frame
     create_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
 
-     # Carpool Name Label and Entry
+    # Carpool Name Label and Entry
     carpool_name_label = tk.Label(create_carpool_frame, text="Carpool Name:", font=("Arial", 12), bg="#ffffff")
     carpool_name_label.grid(row=0, column=0, padx=10, pady=5, sticky="e")
     carpool_name_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
@@ -210,14 +202,15 @@ def open_student_page():
     submit_button = tk.Button(create_carpool_frame, text="Submit", command=create_carpool, font=("Arial", 12), bg="green", fg="white", width=10)
     submit_button.grid(row=6, columnspan=2, pady=10)
 
-
     # Footer frame
-    footer_frame = tk.Frame(carpool_app, bg="red")
+    footer_frame = tk.Frame(carpool_app, bg="red")  
     footer_frame.pack(fill="x", side="bottom")
 
     footer_label = tk.Label(footer_frame, text="\u00A9 Copyright INTI International College Penang. All Rights Reserved", font=("Arial", 12), bg="red", fg="white")
     footer_label.pack(pady=10)
 
     carpool_app.mainloop()
+
+    # Close the database connection after app is closed
     cursor.close()
     conn.close()
