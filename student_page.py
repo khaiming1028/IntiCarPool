@@ -3,6 +3,8 @@ from tkinter import messagebox
 import carpool_form  # Import the renamed module
 import carpool_list
 import mysql.connector
+from tkintermapview import TkinterMapView
+from geopy.geocoders import Nominatim 
 
 
 # MySQL Database Configuration
@@ -207,22 +209,63 @@ def open_student_page():
     carpool_pickup_point_label.grid(row=2, column=0, padx=10, pady=5, sticky="e")
     carpool_pickup_point_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
     carpool_pickup_point_entry.grid(row=2, column=1, padx=10, pady=5)
+    
+    def search_from_google_map():
+        google_map_page = tk.Toplevel(create_carpool_frame)
+        google_map_page.title("Google Map")
+        google_map_page.geometry("600x400")
+        
+        # map inside window
+        map_widget = TkinterMapView(google_map_page, width=600, height=400, corner_radius=0)
+        map_widget.pack(fill="both", expand=True)
+        
+        # google url
+        map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
+        # map_widget.set_position(35.6762, 139.6503)
+        
+         # Create a geolocator object
+        geolocator = Nominatim(user_agent="google_map_search")
 
+    # Function to search for the place and show it on the map
+        def search_place():
+            place = search_entry.get()  # Get the place from the entry widget
+            location = geolocator.geocode(place)  # Get the latitude and longitude
+            
+            if location:
+                # If location found, update map and add a marker
+                map_widget.set_position(location.latitude, location.longitude, zoom=15)
+                map_widget.set_marker(location.latitude, location.longitude)
+                print(f"Location found: {place} (Lat: {location.latitude}, Lon: {location.longitude})")
+            else:
+                print("Place not found")
+
+        # Search bar and button
+        search_entry = tk.Entry(google_map_page, width=40)
+        search_entry.pack(pady=10)
+        
+        search_button = tk.Button(google_map_page, text="Search", command=search_place)
+        search_button.pack(pady=5)
+        
+        
+    # Carpool Select actual location based on Google Map
+    search_location = tk.Button(create_carpool_frame, text="Search from Google Map", command=search_from_google_map, font=("Arial", 12), bg="green", fg="white", width=25)
+    search_location.grid(row=3, columnspan=2, pady=10)
+    
     # Carpool Time Label and Entry
     carpool_pickup_time_label = tk.Label(create_carpool_frame, text="Time:", font=("Arial", 12), bg="#ffffff")
-    carpool_pickup_time_label.grid(row=3, column=0, padx=10, pady=5, sticky="e")
+    carpool_pickup_time_label.grid(row=4, column=0, padx=10, pady=5, sticky="e")
     carpool_pickup_time_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_pickup_time_entry.grid(row=3, column=1, padx=10, pady=5)
+    carpool_pickup_time_entry.grid(row=4, column=1, padx=10, pady=5)
 
     # Carpool Dropoff Time Label and Entry
     carpool_dropoff_time_label = tk.Label(create_carpool_frame, text="Dropoff Time:", font=("Arial", 12), bg="#ffffff")
-    carpool_dropoff_time_label.grid(row=4, column=0, padx=10, pady=5, sticky="e")
+    carpool_dropoff_time_label.grid(row=5, column=0, padx=10, pady=5, sticky="e")
     carpool_dropoff_time_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_dropoff_time_entry.grid(row=4, column=1, padx=10, pady=5)
+    carpool_dropoff_time_entry.grid(row=5, column=1, padx=10, pady=5)
 
     # Create the label for carpool status
     carpool_status_label = tk.Label(create_carpool_frame, text="Status:", font=("Arial", 12), bg="#ffffff")
-    carpool_status_label.grid(row=5, column=0, padx=10, pady=5, sticky="e")
+    carpool_status_label.grid(row=6, column=0, padx=10, pady=5, sticky="e")
 
     # Define the dropdown options for carpool status
     status_options = ["Available", "Closed"]
@@ -234,11 +277,11 @@ def open_student_page():
     # Create the dropdown (OptionMenu) for carpool status
     carpool_status_dropdown = tk.OptionMenu(create_carpool_frame, selected_status, *status_options)
     carpool_status_dropdown.config(font=("Arial", 12), width=27)  # Customize dropdown style
-    carpool_status_dropdown.grid(row=5, column=1, padx=10, pady=5)
+    carpool_status_dropdown.grid(row=6, column=1, padx=10, pady=5)
 
     # Submit Button
     submit_button = tk.Button(create_carpool_frame, text="Submit", command=create_carpool, font=("Arial", 12), bg="green", fg="white", width=10)
-    submit_button.grid(row=6, columnspan=2, pady=10)
+    submit_button.grid(row=7, columnspan=2, pady=10)
 
         # View Carpool frame
     view_carpool_frame = tk.Frame(carpool_app, bg="#f5f5f5")  # Light background color
