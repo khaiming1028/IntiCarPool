@@ -11,7 +11,7 @@ DB_USER = "root"       # Replace with your MySQL username
 DB_PASSWORD = ""  # Replace with your MySQL password
 DB_NAME = "carpool_system"    # Replace with your database name
 
-def open_student_page():
+def open_admin_page():
      # Connect to MySQL Database
     try:
         conn = mysql.connector.connect(
@@ -73,6 +73,103 @@ def open_student_page():
         except mysql.connector.Error as err:
             messagebox.showerror("Database Error", f"Error inserting data: {err}")
 
+    def open_student_list():
+        # Create a new window for displaying the student list
+        student_list_window = tk.Toplevel(carpool_app)
+        student_list_window.title("Student List")
+        student_list_window.geometry("500x400")
+
+        # Add a scrollbar
+        scrollbar = tk.Scrollbar(student_list_window)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Create a listbox for displaying usernames and car names
+        listbox = tk.Listbox(student_list_window, font=("Arial", 12), width=50)
+        listbox.pack(fill=tk.BOTH, expand=True)
+        listbox.config(yscrollcommand=scrollbar.set)
+        scrollbar.config(command=listbox.yview)
+
+        button_frame = tk.Frame(student_list_window)
+        button_frame.pack(fill=tk.X, pady=10)
+
+        
+
+        # Connect to the database
+        try:
+            conn = mysql.connector.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME
+            )
+            cursor = conn.cursor()
+
+            # Fetch usernames and car names from the User table
+            query = "SELECT username, car_name FROM User"
+            cursor.execute(query)
+            results = cursor.fetchall()
+
+            # Populate the listbox with results
+            for row in results:
+                username, car_name = row
+                car_name = car_name if car_name else "No Car Info"  # Handle missing car names
+                listbox.insert(tk.END, f"Username: {username} | Car: {car_name}")
+
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error: {err}")
+
+        # Delete user function
+        def delete_user():
+            selected_index = listbox.curselection()
+            if not selected_index:
+                messagebox.showwarning("No Selection", "Please select a user to delete.")
+                return
+
+            # Get the username from the selected index
+            selected_entry = listbox.get(selected_index[0])
+            username = selected_entry.split(" | ")[0].replace("Username: ", "").strip()
+
+            # Confirm deletion
+            confirm = messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this user?")
+            if confirm:
+                try:
+                    # Debugging: Print username to ensure correctness
+                    print(f"Attempting to delete user: {username}")
+
+                    # Delete the user from the database
+                    delete_query = "DELETE FROM User WHERE username = %s"
+                    cursor.execute(delete_query, (username,))
+                
+                    # Commit changes to the database
+                    conn.commit()
+
+                    # Check if any row was affected
+                    if cursor.rowcount > 0:
+                        # Remove the user from the listbox
+                        listbox.delete(selected_index[0])
+                        messagebox.showinfo("Success", f"User '{username}' deleted successfully.")
+                    else:
+                        messagebox.showerror("Error", f"No user found with username '{username}'. Deletion failed.")
+
+                except mysql.connector.Error as err:
+                    messagebox.showerror("Database Error", f"Error: {err}")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Unexpected error: {e}")
+
+        # Add Delete Button
+        delete_button = tk.Button(button_frame, text="Delete User", command=delete_user, font=("Arial", 12), bg="red", fg="white")
+        delete_button.pack(side=tk.LEFT, padx=10)
+
+        # Close database connection when window is closed
+        def on_close():
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+            student_list_window.destroy()
+
+        student_list_window.protocol("WM_DELETE_WINDOW", on_close)
+
     def search_carpool():
         # Implement search carpool functionality
         page_title_label.config(text="Search Carpool")
@@ -117,6 +214,9 @@ def open_student_page():
 
     joined_carpool_button = tk.Button(navbar_frame, text="Joined Carpool", command=joined_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     joined_carpool_button.pack(side="left", padx=10, pady=10)
+
+    student_list_button = tk.Button(navbar_frame, text="Student List", command=open_student_list, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    student_list_button.pack(side="left", padx=10, pady=10)
 
     # Dropdown menu for "My Profile"
     profile_menu = tk.Menubutton(navbar_frame, text="My Profile", font=button_font, bg=button_bg, fg=button_fg, bd=0, relief="flat")
