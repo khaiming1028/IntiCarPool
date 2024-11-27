@@ -153,6 +153,13 @@ def open_student_page():
     # Main menu frame
     main_menu_frame = tk.Frame(carpool_app, bg="#ffffff")
     main_menu_frame.pack()
+    tk.Label(main_menu_frame, text="Welcome to IICP Carpooling System", font=("Arial", 18, "bold"), bg="#ffffff").pack(pady=20)
+    tk.Label(main_menu_frame, text="Connect with fellow IICP students to carpool together to campus, reduce traffic congestion, and lower your carbon footprint!", font=("Arial", 12), bg="#ffffff").pack(pady=10)
+    car_image = tk.PhotoImage(file="homeCar.png")
+    car_image_label = tk.Label(main_menu_frame, image=car_image, bg="#ffffff")
+    car_image_label.pack(pady=20)
+    tk.Button(main_menu_frame, text="Search for Carpools", command=search_carpool, font=("Arial", 14), bg="#dd6f6f", fg="#ffffff").pack(pady=20)
+
 
     # Create Carpool frame
     create_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
