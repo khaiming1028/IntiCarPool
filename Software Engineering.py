@@ -6,9 +6,9 @@ import mysql.connector
 mysqldb = mysql.connector.connect(host="localhost",user="root",password="",database="carpool_system")
 mysqlcursor = mysqldb.cursor()
 #create carpool_application table
-#mysqlcursor.execute("create table Carpool_Application(id INT,user_id INT,carpool_id INT)")
+# mysqlcursor.execute("create table Carpool_Application(id INT,user_id INT,carpool_id INT)")
 #Create Carpool table
-#mysqlcursor.execute("create table Carpool(id INT,driver_id INT,carpool_name VARCHAR(30),available_seat INT,pickup_point VARCHAR(30),pickup_time VARCHAR(30),dropoff_time VARCHAR(30),status VARCHAR(30))")
+# mysqlcursor.execute("create table Carpool(id INT,driver_id INT,carpool_name VARCHAR(30),available_seat INT,pickup_point VARCHAR(30),pickup_time VARCHAR(30),dropoff_time VARCHAR(30),status VARCHAR(30))")
 #Create User table
 #mysqlcursor.execute("create table User(id INT,email VARCHAR(30),username VARCHAR(30),password VARCHAR(30),contact VARCHAR(30),car_type VARCHAR(30),car_name VARCHAR(30),car_plate VARCHAR(30))")
 #create feedback table
