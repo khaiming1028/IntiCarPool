@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import carpool_form  # Import the renamed module
 import carpool_list
+import globals
 import mysql.connector
 
 
@@ -44,9 +45,14 @@ def open_student_page():
         page_title_label.config(text="Create Carpool")
 
     def create_carpool():
+        driver_id = globals.logged_in_user_id
+        if not driver_id:
+            messagebox.showerror("Error", "Driver ID is not valid.")
+            return
+
        # Get user input
         carpool_name = carpool_name_entry.get()
-        person_limit = carpool_available_seat_entry.get()
+        available_seat = carpool_available_seat_entry.get()
         pickup_point = carpool_pickup_point_entry.get()
         pickup_time = carpool_pickup_time_entry.get()
         dropoff_time = carpool_dropoff_time_entry.get()
@@ -55,17 +61,17 @@ def open_student_page():
         
 
         # Validate input
-        if not all([carpool_name, person_limit, pickup_point, pickup_time, dropoff_time]):
+        if not all([carpool_name, available_seat, pickup_point, pickup_time, dropoff_time]):
             messagebox.showerror("Input Error", "All fields are required!")
             return
 
         try:
             # Insert data into the database
             query = """
-                INSERT INTO carpool (carpool_name, person_limit, pickup_point, pickup_time, dropoff_time, status)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO carpool (carpool_name, driver_id, available_seat, pickup_point, pickup_time, dropoff_time, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
-            values = (carpool_name, person_limit, pickup_point, pickup_time, dropoff_time, status)
+            values = (carpool_name, driver_id, available_seat, pickup_point, pickup_time, dropoff_time, status)
             cursor.execute(query, values)
             conn.commit()
 
@@ -276,21 +282,26 @@ def open_student_page():
     carpool_listbox.pack(side="left", fill="both", expand=True)
     scrollbar.config(command=carpool_listbox.yview)
 
+
     # Fetch and Display Carpool Data with a Join Button
+    # Fetch and Display Carpool Data
     def fetch_and_display_carpools():
         carpool_listbox.delete(0, tk.END)  # Clear previous entries
         try:
-            query = "SELECT carpool_id, carpool_name, available_seat, pickup_point, pickup_time, status FROM carpool"
+            query = "SELECT id, carpool_name, available_seat, pickup_point, pickup_time, status FROM carpool"
             cursor.execute(query)
-            results = cursor.fetchall()
+            rows = cursor.fetchall()
 
-            for carpool in results:
-                carpool_id, name, seat, pickup, time, status = carpool
-                display_text = (
-                    f"Carpool ID: {carpool_id} | Name: {name} | Seats: {seat} | "
-                    f"Pickup: {pickup} | Time: {time} | Status: {status}"
-                )
-                carpool_listbox.insert(tk.END, display_text)
+            if not rows:
+                carpool_listbox.insert(tk.END, "No carpools available.")
+            else:
+                for carpool in rows:
+                    id, name, seat, pickup, time, status = carpool
+                    display_text = (
+                        f"Carpool ID: {id} | Name: {name} | Seats: {seat} | "
+                        f"Pickup: {pickup} | Time: {time} | Status: {status}"
+                    )
+                    carpool_listbox.insert(tk.END, display_text)  # Add to Listbox
 
         except mysql.connector.Error as err:
             messagebox.showerror("Database Error", f"Error fetching data: {err}")
@@ -301,30 +312,37 @@ def open_student_page():
     # Join Carpool Functionality
     def join_carpool():
         try:
-            # Get selected carpool ID from the listbox
+            # Ensure the user is logged in
+            if globals.logged_in_user_id is None:
+                messagebox.showerror("Error", "User is not logged in.")
+                return
+
+            # Ensure a carpool is selected
             selected_index = carpool_listbox.curselection()
             if not selected_index:
                 messagebox.showerror("Selection Error", "Please select a carpool to join.")
                 return
 
+            # Get the selected carpool text
             selected_carpool = carpool_listbox.get(selected_index)
-            carpool_id = selected_carpool.split('|')[0].split(': ')[1]  # Extract carpool ID from text
+            
+            # Extract the Carpool ID
+            try:
+                carpool_id = int(selected_carpool.split('|')[0].split(': ')[1].strip())
+            except (IndexError, ValueError):
+                carpool_id = 0  # Default to 0 if extraction fails
 
-            # Insert into carpool_application table
-            query = """
-                INSERT INTO carpool_application (carpool_id, user_id, status)
-                VALUES (%s, %s, %s)
-            """
-            values = (carpool_id, 1, "Pending")  # Replace `1` with the logged-in user ID
-            cursor.execute(query)
+            # Insert the application into the carpool_application table
+            query = "INSERT INTO carpool_application (carpool_id, user_id, status) VALUES (%s, %s, %s)"
+            values = (carpool_id, globals.logged_in_user_id, "Pending")
+            cursor.execute(query, values)
             conn.commit()
 
             messagebox.showinfo("Success", f"You have successfully applied to join Carpool ID {carpool_id}.")
-
-        except mysql.connector.IntegrityError:
-            messagebox.showerror("Error", "You have already applied to this carpool.")
         except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error joining carpool: {err}")
+            messagebox.showerror("Database Error", f"Error: {err}")
+
+
 
     # Join Carpool Button
     join_carpool_button = tk.Button(

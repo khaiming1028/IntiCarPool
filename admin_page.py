@@ -38,6 +38,7 @@ def open_admin_page():
         create_carpool_frame.pack_forget()
         main_menu_frame.pack()
         page_title_label.config(text="Home")
+        
     def show_create_carpool_page():
         main_menu_frame.pack_forget()
         create_carpool_frame.pack()
@@ -189,9 +190,28 @@ def open_admin_page():
     def logout():
         carpool_app.destroy()
 
+    # Function to fetch counts
+    def fetch_counts():
+        try:
+            # Fetch total users
+            cursor.execute("SELECT COUNT(*) FROM User")
+            total_users = cursor.fetchone()[0]
+
+            # Fetch total carpools
+            cursor.execute("SELECT COUNT(*) FROM carpool")
+            total_carpools = cursor.fetchone()[0]
+
+            return total_users, total_carpools
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error fetching data: {err}")
+            return 0, 0
+
+    # Fetch the counts
+    total_users, total_carpools = fetch_counts()
+
     # Navbar frame
     navbar_frame = tk.Frame(carpool_app, bg="#ffffff")
-    navbar_frame.pack(fill="x")  # Add padding to the bottom
+    navbar_frame.pack(fill="x", pady=(0,5))  # Add padding to the bottom
 
     # Load the image
     logo_image = tk.PhotoImage(file="INTIlogo.png")
@@ -230,20 +250,48 @@ def open_admin_page():
 
     profile_menu.pack(side="right", padx=(10, 20), pady=10)
 
+   # Main Content Frame (Background for the white area)
+    main_content_frame = tk.Frame(carpool_app, bg="#f5f5f5")
+    main_content_frame.pack(fill="both", expand=True)
+
+    # Box Frame (For Total Users and Total Carpools Boxes)
+    box_frame = tk.Frame(main_content_frame, bg="#f5f5f5")  # Light gray background
+    box_frame.place(relx=0.5, rely=0.5, anchor="center")  # Center the boxes in the middle of the frame
+
+    # Total Users Box
+    users_frame = tk.Frame(box_frame, bg="#ffffff", relief="solid", bd=1)  # White background, bordered box
+    users_frame.grid(row=0, column=0, padx=20, pady=10)  # Add spacing between boxes
+
+    users_label = tk.Label(users_frame, text="Total Users", font=("Arial", 12), bg="#ffffff")
+    users_label.pack(pady=(10, 0))  # Padding at the top only
+
+    users_count_label = tk.Label(users_frame, text="2", font=("Arial", 24, "bold"), bg="#ffffff")
+    users_count_label.pack(pady=(0, 10))  # Padding at the bottom only
+
+    # Total Carpools Box
+    carpools_frame = tk.Frame(box_frame, bg="#ffffff", relief="solid", bd=1)  # White background, bordered box
+    carpools_frame.grid(row=0, column=1, padx=20, pady=10)  # Add spacing between boxes
+
+    carpools_label = tk.Label(carpools_frame, text="Total Carpools", font=("Arial", 12), bg="#ffffff")
+    carpools_label.pack(pady=(10, 0))  # Padding at the top only
+
+    carpools_count_label = tk.Label(carpools_frame, text="3", font=("Arial", 24, "bold"), bg="#ffffff")
+    carpools_count_label.pack(pady=(0, 10))  # Padding at the bottom only
+
     # Move notification icon to the left of the profile menu
     notification_icon = tk.Label(navbar_frame, text="🔔", font=button_font, bg=button_bg, fg=button_fg)
     notification_icon.pack(side="right", padx=10, pady=10)
 
     # Full-width bar for page title
     title_bar_frame = tk.Frame(carpool_app, bg="#000000")
-    title_bar_frame.pack(fill="x", pady=(0,40))
+    title_bar_frame.pack(fill="x", pady=0)
 
     page_title_label = tk.Label(title_bar_frame, text="Home", font=("Arial", 14, "bold"), bg="#000000", fg="#ffffff")
-    page_title_label.pack(side="left", pady=15, padx=20)
+    page_title_label.pack(side="left", pady=15, padx=5)
 
     # Main menu frame
     main_menu_frame = tk.Frame(carpool_app, bg="#ffffff")
-    main_menu_frame.pack()
+    main_menu_frame.pack(fill="both", expand=True, pady=(10, 0))  # Adjust top margin
 
     # # Option 1: View Carpool
     # view_carpool_button = tk.Button(main_menu_frame, text="View Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)

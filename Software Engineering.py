@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import student_page
+import globals
 import mysql.connector
 
 mysqldb = mysql.connector.connect(host="localhost",user="root",password="",database="carpool_system")
@@ -39,11 +40,17 @@ def check_login():
 
     try:
         # Query the database to check for matching username and password
-        query = "SELECT * FROM User WHERE username = %s AND password = %s"
+        query = "SELECT id, username FROM User WHERE username = %s AND password = %s"
         mysqlcursor.execute(query, (username, password))
         result = mysqlcursor.fetchone()
 
         if result:
+            #Extract id and name
+            user_id, user_username = result
+
+            # Store the user ID globally for later use (e.g., joining carpools)
+            globals.logged_in_user_id = user_id
+
             # Login successful for regular users
             messagebox.showinfo("Login Successful", f"Welcome, {username}")
             app.destroy()  # Close the login window
