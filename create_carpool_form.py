@@ -3,7 +3,7 @@
 import tkinter as tk
 from tkcalendar import DateEntry
 
-def create_carpool_form(parent_frame, create_carpool_callback):
+def create_carpool_form(parent_frame, create_carpool_callback, search_location_callback):
     # Add a header tab to the create carpool frame
     carpool_header_label = tk.Label(parent_frame, text="Create Carpool", font=("Arial", 12, "bold"), bg="#666666", fg="#ffffff", pady=10)
     carpool_header_label.grid(row=0, column=0, columnspan=3, padx=0, pady=(0,10), sticky="ew")
@@ -59,7 +59,7 @@ def create_carpool_form(parent_frame, create_carpool_callback):
     carpool_pickup_point_entry.grid(row=6, column=1, padx=20, pady=5, sticky="w")
 
     # Search Location Button
-    search_location = tk.Button(parent_frame, text="Search Location", font=("Arial", 12), bg="blue", fg="white")
+    search_location = tk.Button(parent_frame, text="Search Location", command=search_location_callback, font=("Arial", 12), bg="blue", fg="white")
     search_location.grid(row=6, column=2, padx=(10,20), pady=5)
 
     # Submit Button

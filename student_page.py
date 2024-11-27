@@ -100,6 +100,76 @@ def open_student_page():
         except mysql.connector.Error as err:
             messagebox.showerror("Database Error", f"Error inserting data: {err}")
 
+    # Function to search for the place and show it on the map
+    def search_from_google_map():
+        google_map_page = tk.Toplevel(create_carpool_frame)
+        google_map_page.title("Google Map")
+        google_map_page.geometry("600x500")
+        geolocator = Nominatim(user_agent="google_map_search")
+        
+        # Map widget
+        map_widget = TkinterMapView(google_map_page, width=600, height=400, corner_radius=0)
+        map_widget.pack(fill="both", expand=True)
+
+        # Use Google Maps tile server
+        map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
+
+        # Variable to store the marker
+        global current_marker
+        current_marker = None
+
+        # Function to search for a location
+        def search_place():
+            place = search_entry.get()
+            if place:
+                geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={place}&key={GOOGLE_API_KEY}"
+                response = requests.get(geocode_url)
+                data = response.json()
+
+                if data["status"] == "OK":
+                    # Extract latitude and longitude
+                    location = data["results"][0]["geometry"]["location"]
+                    lat, lng = location["lat"], location["lng"]
+
+                    # Update map position and add a marker
+                    map_widget.set_position(lat, lng, zoom=15)
+                    global current_marker
+                    if current_marker:  # Remove existing marker
+                        current_marker.delete()
+                    current_marker = map_widget.set_marker(lat, lng)
+                else:
+                    print("Error from Geocoding API:", data.get("error_message", "Unknown error"))
+
+        # Function to set the pickup location
+        def set_pickup_location():
+            if current_marker:
+                # Get the position (latitude, longitude)
+                lat, lng = current_marker.position
+                
+                # Convert coordinates to address
+                location = geolocator.reverse((lat, lng), language='en')
+                
+                if location:
+                    # Display the address in the entry widget
+                    carpool_form_entries["carpool_pickup_point_entry"].delete(0, tk.END)
+                    carpool_form_entries["carpool_pickup_point_entry"].insert(0, location.address)
+                else:
+                    print("Address not found!")
+                
+                google_map_page.destroy()
+            else:
+                print("No location selected!")
+
+        # Search bar and button
+        search_entry = tk.Entry(google_map_page, width=40)
+        search_entry.pack(pady=10)
+        
+        search_button = tk.Button(google_map_page, text="Search", command=search_place)
+        search_button.pack(pady=5)
+        # Confirm button
+        confirm_button = tk.Button(google_map_page, text="Set as Pickup Point", command=set_pickup_location)
+        confirm_button.pack(pady=10)
+
     def search_carpool():
         # Implement search carpool functionality
         page_title_label.config(text="Search Carpool")
@@ -180,7 +250,7 @@ def open_student_page():
 
     # Create Carpool frame
     create_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
-    carpool_form_entries = create_carpool_form(create_carpool_frame, create_carpool)
+    carpool_form_entries = create_carpool_form(create_carpool_frame, create_carpool, search_from_google_map)
 
     # Search Carpool frame
     search_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
