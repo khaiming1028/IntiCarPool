@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
@@ -112,7 +113,8 @@ def open_student_page(user_id):
     def search_from_google_map():
         google_map_page = tk.Toplevel(create_carpool_frame)
         google_map_page.title("Google Map")
-        google_map_page.geometry("600x500")
+        google_map_page.geometry("800x800")
+
         geolocator = Nominatim(user_agent="google_map_search")
         
         # Map widget
