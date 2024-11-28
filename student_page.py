@@ -1,6 +1,5 @@
-
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import Menu, messagebox
 from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
 import mysql.connector
 from datetime import datetime  # Import datetime module
@@ -11,7 +10,7 @@ from create_carpool_form import create_carpool_form  # Import the create_carpool
 from search_carpool_form import search_carpool_form  # Import the search_carpool_form function
 from profile_form import create_profile_form  # Import the create_profile_form function
 from join_carpool_form import join_carpool_form  # Import the join_carpool_form function
-
+from manage_carpool_form import manage_carpool_form  # Import the manage_carpool_form function
 
 GOOGLE_API_KEY = "AIzaSyC4GMTOjpDLoMQsQKBc1y64bPTwJFsPgBg"
 
@@ -70,14 +69,18 @@ def open_student_page(user_id):
         join_carpool_frame.pack()
         page_title_label.config(text="Join Carpool")
 
+    def show_manage_carpool_page():
+        hide_all_frames()
+        manage_carpool_frame.pack()
+        page_title_label.config(text="Manage Carpool")
 
     def hide_all_frames():
         main_menu_frame.pack_forget()
         create_carpool_frame.pack_forget()
         search_carpool_frame.pack_forget()
         profile_frame.pack_forget()
-        join_carpool_frame.pack_forget()  
-
+        join_carpool_frame.pack_forget()
+        manage_carpool_frame.pack_forget()
 
     def create_carpool():
         # Get user input
@@ -108,10 +111,10 @@ def open_student_page(user_id):
 
             # Insert data into the database
             query = """
-                INSERT INTO carpool (carpool_name, available_seat, pickup_point, pickup_datetime, dropoff_time, status)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO carpool (carpool_name, available_seat, pickup_point, pickup_datetime, dropoff_time, status, driver_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
-            values = (carpool_name, available_seat, pickup_point, pickup_datetime, dropoff_time, status)
+            values = (carpool_name, available_seat, pickup_point, pickup_datetime, dropoff_time, status, user_id)
             cursor.execute(query, values)
             conn.commit()
 
@@ -272,7 +275,7 @@ def open_student_page(user_id):
     profile_menu.menu = tk.Menu(profile_menu, tearoff=0)
     profile_menu["menu"] = profile_menu.menu
 
-    profile_menu.menu.add_command(label="Manage Carpool", command=manage_carpool)
+    profile_menu.menu.add_command(label="Manage Carpool", command=show_manage_carpool_page)
     profile_menu.menu.add_command(label="Profile", command=show_profile_page)
     profile_menu.menu.add_separator()
     profile_menu.menu.add_command(label="Logout", command=logout)
@@ -308,13 +311,17 @@ def open_student_page(user_id):
     search_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
     search_carpool_form_entries = search_carpool_form(search_carpool_frame)
 
-   # Profile frame
+    # Profile frame
     profile_frame = tk.Frame(carpool_app, bg="#ffffff")
     profile_form_entries = create_profile_form(profile_frame, user_id=user_id)
     
-     # join Carpool frame
+    # Join Carpool frame
     join_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
     join_carpool_form_entries = join_carpool_form(join_carpool_frame)
+
+    # Manage Carpool frame
+    manage_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
+    manage_carpool_form(manage_carpool_frame, user_id)
 
     # Footer frame
     footer_frame = tk.Frame(carpool_app, bg="red")
