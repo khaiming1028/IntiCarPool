@@ -8,6 +8,7 @@ from geopy.geocoders import Nominatim
 import requests
 from create_carpool_form import create_carpool_form  # Import the create_carpool_form function
 from search_carpool_form import search_carpool_form  # Import the search_carpool_form function
+from profile_form import create_profile_form  # Import the create_profile_form function
 
 GOOGLE_API_KEY = "AIzaSyC4GMTOjpDLoMQsQKBc1y64bPTwJFsPgBg"
 
@@ -17,7 +18,7 @@ DB_USER = "root"       # Replace with your MySQL username
 DB_PASSWORD = ""  # Replace with your MySQL password
 DB_NAME = "carpool_system"    # Replace with your database name
 
-def open_student_page():
+def open_student_page(user_id):
     # Connect to MySQL Database
     try:
         conn = mysql.connector.connect(
@@ -55,10 +56,17 @@ def open_student_page():
         search_carpool_frame.pack()
         page_title_label.config(text="Search Carpool")
 
+    def show_profile_page():
+        hide_all_frames()
+        profile_frame.pack()
+        page_title_label.config(text="My Profile")
+        fetch_and_display_user_data(user_id)
+
     def hide_all_frames():
         main_menu_frame.pack_forget()
         create_carpool_frame.pack_forget()
         search_carpool_frame.pack_forget()
+        profile_frame.pack_forget()
 
     def create_carpool():
         # Get user input
@@ -189,6 +197,39 @@ def open_student_page():
     def logout():
         carpool_app.destroy()
 
+    def fetch_and_display_user_data(user_id):
+        try:
+            # Fetch user data from the database
+            query = "SELECT username, email, contact FROM User WHERE id = %s"
+            cursor.execute(query, (user_id,))
+            result = cursor.fetchone()
+
+            if result:
+                user_data = {
+                    "username": result[0],
+                    "email": result[1],
+                    "contact": result[2]
+                }
+                # Populate the profile form with user data
+                profile_form_entries["user_name_entry"].config(state=tk.NORMAL)
+                profile_form_entries["user_name_entry"].delete(0, tk.END)
+                profile_form_entries["user_name_entry"].insert(0, user_data["username"])
+                profile_form_entries["user_name_entry"].config(state=tk.DISABLED)
+
+                profile_form_entries["email_entry"].config(state=tk.NORMAL)
+                profile_form_entries["email_entry"].delete(0, tk.END)
+                profile_form_entries["email_entry"].insert(0, user_data["email"])
+                profile_form_entries["email_entry"].config(state=tk.DISABLED)
+
+                profile_form_entries["phone_entry"].config(state=tk.NORMAL)
+                profile_form_entries["phone_entry"].delete(0, tk.END)
+                profile_form_entries["phone_entry"].insert(0, user_data["contact"])
+                profile_form_entries["phone_entry"].config(state=tk.DISABLED)
+            else:
+                messagebox.showerror("Error", "User data not found")
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error fetching user data: {err}")
+
     # Navbar frame
     navbar_frame = tk.Frame(carpool_app, bg="#ffffff")
     navbar_frame.pack(fill="x")  # Add padding to the bottom
@@ -221,7 +262,7 @@ def open_student_page():
     profile_menu["menu"] = profile_menu.menu
 
     profile_menu.menu.add_command(label="Manage Carpool", command=manage_carpool)
-    profile_menu.menu.add_command(label="Profile", command=profile)
+    profile_menu.menu.add_command(label="Profile", command=show_profile_page)
     profile_menu.menu.add_separator()
     profile_menu.menu.add_command(label="Logout", command=logout)
 
@@ -255,6 +296,10 @@ def open_student_page():
     # Search Carpool frame
     search_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
     search_carpool_form_entries = search_carpool_form(search_carpool_frame)
+
+    # Profile frame
+    profile_frame = tk.Frame(carpool_app, bg="#ffffff")
+    profile_form_entries = create_profile_form(profile_frame, user_id=user_id)
 
     # Footer frame
     footer_frame = tk.Frame(carpool_app, bg="red")
