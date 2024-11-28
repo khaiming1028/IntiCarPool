@@ -252,10 +252,148 @@ def update_carpool(carpool_id, carpool_form_entries, edit_popup):
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Error updating data: {err}")
 
-def view_passenger(carpool):
+def view_passenger(carpool_application):
+    user_id = carpool_application[1]
+    carpool_id = carpool_application[2]
     # Function to view passengers of the selected carpool
-    messagebox.showinfo("View Passenger", f"View passengers for carpool: {carpool}")
+    try:
+            # Connect to the MySQL database
+            db_connection = mysql.connector.connect(
+                host="localhost",  # Your XAMPP MySQL host
+                user="root",  # Your MySQL username
+                password="",  # Your MySQL password (default is empty for XAMPP)
+                database="carpool_system"  # Your database name
+            )
+            cursor = db_connection.cursor()
 
+            # Query to delete the carpool
+            query = """
+                    SELECT u.username, u.email, u.contact
+                    FROM carpool_application p
+                    JOIN user u ON p.user_id = u.id;
+                    WHERE id = %s" AND status = 'pending'
+            """
+            cursor.execute(query, (user_id,))
+            # Fetch the result
+            result = cursor.fetchone()
+            if result:
+                username, email, contact_number = result
+                display_user_details(username, email, contact_number, user_id, carpool_id)
+            else:
+                print("No passenger found for this user ID.")
+                
+            cursor.close()
+            
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error finding data: {err}")
+ 
+def display_user_details(username, email, contact_number, user_id, carpool_id):
+    # Create a new window (pop-up UI)
+    window = tk.Tk()
+    window.title("Passenger Details")
+
+    # Label to display user information
+    tk.Label(window, text=f"Username: {username}").pack()
+    tk.Label(window, text=f"Email: {email}").pack()
+    tk.Label(window, text=f"Contact Number: {contact_number}").pack()
+
+    # Buttons for approval and decline
+    approve_button = tk.Button(window, text="Approve", command=lambda: approved_button(carpool_id, "approved", window))
+    approve_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+    decline_button = tk.Button(window, text="Decline", command=lambda: declined_button(carpool_id, "declined", window))
+    decline_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+    # Run the UI window
+    window.mainloop()
+    
+def approved_button(carpool_id, status, window):
+    # Connect to the MySQL database
+    db_connection = mysql.connector.connect(
+                host="localhost",  # Your XAMPP MySQL host
+                user="root",  # Your MySQL username
+                password="",  # Your MySQL password (default is empty for XAMPP)
+                database="carpool_system"  # Your database name
+            )
+    cursor = db_connection.cursor()
+    
+    # Update the status in the carpool_application table
+    update_query = """
+                    UPDATE carpool_application
+                    SET status = %s
+                    WHERE carpool_id = %s AND status = 'pending'
+    """
+    
+    # Execute the update query
+    cursor.execute(update_query, (status, carpool_id))
+    db_connection.commit()
+    db_connection.close()
+
+    # Inform the user about the update
+    messagebox.showinfo("Status Updated", f"Application has been {status}.")
+
+    # Close the pop-up window
+    window.destroy()
+
+def declined_button(carpool_id, status, window):
+    # Connect to the MySQL database
+    db_connection = mysql.connector.connect(
+                host="localhost",  # Your XAMPP MySQL host
+                user="root",  # Your MySQL username
+                password="",  # Your MySQL password (default is empty for XAMPP)
+                database="carpool_system"  # Your database name
+            )
+    cursor = db_connection.cursor()
+    
+    # Update the status in the carpool_application table
+    update_query = """
+                    UPDATE carpool_application
+                    SET status = %s
+                    WHERE carpool_id = %s AND status = 'pending'
+    """
+    
+    # Execute the update query
+    cursor.execute(update_query, (status, carpool_id))
+    db_connection.commit()
+    db_connection.close()
+
+    # Inform the user about the update
+    messagebox.showinfo("Status Updated", f"Application has been {status}.")
+
+    # Close the pop-up window
+    window.destroy()
+
+               
 def delete_carpool(carpool):
-    # Function to delete the selected carpool
-    messagebox.showinfo("Delete Carpool", f"Delete carpool: {carpool}")
+    # Function to delete the selected carpool from the database
+    carpool_id = carpool[0]
+    
+    # Confirm with the user before deleting
+    confirm = messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this carpool?")
+    if confirm:
+        try:
+            # Connect to the MySQL database
+            db_connection = mysql.connector.connect(
+                host="localhost",  # Your XAMPP MySQL host
+                user="root",  # Your MySQL username
+                password="",  # Your MySQL password (default is empty for XAMPP)
+                database="carpool_system"  # Your database name
+            )
+            cursor = db_connection.cursor()
+
+            # Query to delete the carpool
+            query = "DELETE FROM carpool WHERE id = %s"
+            cursor.execute(query, (carpool_id,))
+
+            # Commit the changes
+            db_connection.commit()
+
+            # Close the cursor and connection
+            cursor.close()
+            db_connection.close()
+
+            # Show success message
+            messagebox.showinfo("Success", "Carpool deleted successfully!")
+            
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error deleting data: {err}")
