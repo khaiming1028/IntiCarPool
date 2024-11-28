@@ -5,7 +5,7 @@ from tkcalendar import DateEntry
 import mysql.connector
 from tkinter import messagebox
 
-def search_carpool_form(parent_frame):
+def search_carpool_form(parent_frame, user_id):
     # Add a header tab to the search carpool frame
     search_carpool_header_label = tk.Label(parent_frame, text="Search for Carpools", font=("Arial", 12, "bold"), bg="#666666", fg="#ffffff", pady=10)
     search_carpool_header_label.grid(row=0, column=0, columnspan=3, padx=0, pady=(0,10), sticky="ew")
@@ -66,7 +66,6 @@ def search_carpool_form(parent_frame):
             cursor.close()
             db_connection.close()
 
-
             # Display the results
             if results:
                 show_carpool_details(results)
@@ -88,7 +87,6 @@ def search_carpool_form(parent_frame):
         # Loop through each result and create labels to display carpool details
         for idx, row in enumerate(results):
             carpool_id = row[0]
-            user_id = row[0]
             carpool_name = row[2]
             available_seat = row[3]
             pickup_point = row[4]
@@ -108,7 +106,7 @@ def search_carpool_form(parent_frame):
             pickup_datetime_label = tk.Label(carpool_details_frame, text=f"Pickup DateTime: {pickup_datetime}", font=("Arial", 12), bg="#F5F5F5")
             pickup_datetime_label.grid(row=idx+2, column=1, sticky="w", padx=10, pady=2)
 
-            # Add a button to allow the user to join the carpool (Future functionality)
+            # Add a button to allow the user to join the carpool
             join_button = tk.Button(carpool_details_frame, text="Join Carpool", font=("Arial", 12), bg="#E21A22", fg="white", command=lambda c=carpool_id, u=user_id: request_carpool(c,u))
             join_button.grid(row=idx + 3, column=0, columnspan=2, pady=10, sticky="ew")
         
