@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import messagebox
-import carpool_form  # Import the renamed module
-import carpool_list
+from datetime import datetime  # Import datetime for fetching current time
 import mysql.connector
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 # MySQL Database Configuration
@@ -10,6 +11,12 @@ DB_HOST = "localhost"  # Replace with your database host
 DB_USER = "root"       # Replace with your MySQL username
 DB_PASSWORD = ""  # Replace with your MySQL password
 DB_NAME = "carpool_system"    # Replace with your database name
+
+# Function to fetch and update the current time
+def update_time_label():
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Format: Year-Month-Day Hour:Minute:Second
+    time_label.config(text=current_time)  # Update the time label
+    time_label.after(1000, update_time_label)  # Refresh the time every second
 
 def open_admin_page():
      # Connect to MySQL Database
@@ -38,6 +45,7 @@ def open_admin_page():
         create_carpool_frame.pack_forget()
         main_menu_frame.pack()
         page_title_label.config(text="Home")
+        
     def show_create_carpool_page():
         main_menu_frame.pack_forget()
         create_carpool_frame.pack()
@@ -189,9 +197,41 @@ def open_admin_page():
     def logout():
         carpool_app.destroy()
 
+    # Function to fetch counts
+    def fetch_counts():
+        try:
+            # Fetch total users
+            cursor.execute("SELECT COUNT(*) FROM User")
+            total_users = cursor.fetchone()[0]
+
+            # Fetch total carpools
+            cursor.execute("SELECT COUNT(*) FROM carpool")
+            total_carpools = cursor.fetchone()[0]
+
+            return total_users, total_carpools
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error fetching data: {err}")
+            return 0, 0
+        
+    def create_graph(total_users, total_carpools):
+        # Create a bar chart
+        categories = ['Total Users', 'Total Carpools']
+        values = [total_users, total_carpools]
+
+        fig, ax = plt.subplots(figsize=(5, 3))
+        ax.bar(categories, values, color=['#007bff', '#28a745'])
+        ax.set_title('Carpool System Overview')
+        ax.set_ylabel('Counts')
+        ax.set_ylim(0, max(values) + 10)  # Add some space above the highest bar
+
+        return fig
+
+    # Fetch the counts
+    total_users, total_carpools = fetch_counts()
+
     # Navbar frame
     navbar_frame = tk.Frame(carpool_app, bg="#ffffff")
-    navbar_frame.pack(fill="x")  # Add padding to the bottom
+    navbar_frame.pack(fill="x", pady=(0,5))  # Add padding to the bottom
 
     # Load the image
     logo_image = tk.PhotoImage(file="INTIlogo.png")
@@ -230,20 +270,86 @@ def open_admin_page():
 
     profile_menu.pack(side="right", padx=(10, 20), pady=10)
 
+   # Main content frame
+    main_content_frame = tk.Frame(carpool_app, bg="#f5f5f5")
+    main_content_frame.pack(fill="both", expand=True, pady=20)
+
+    # Box Frame (For Total Users and Total Carpools Boxes)
+    box_frame = tk.Frame(main_content_frame, bg="#f5f5f5")  # Light gray background
+    box_frame.pack(pady=20)
+
+    # Box Style
+    box_style = {
+        "bg": "#ffffff",
+        "relief": "solid",
+        "bd": 1,
+        "highlightthickness": 2,
+        "highlightbackground": "#d1d1d1"
+    }
+
+    # Current Time Box
+    time_frame = tk.Frame(box_frame, **box_style)
+    time_frame.grid(row=0, column=2, padx=40, pady=10)
+
+    time_label_title = tk.Label(time_frame, text="Current Date and Time", font=("Arial", 12), bg="#ffffff")
+    time_label_title.pack(pady=(10, 0))
+
+    # Dynamic Time Label
+    global time_label
+    time_label = tk.Label(time_frame, text="", font=("Arial", 24, "bold"), bg="#ffffff")
+    time_label.pack(pady=(0, 10))
+
+    # Initialize time update
+    update_time_label()
+
+    # Total Users Box
+    users_frame = tk.Frame(box_frame, **box_style)
+    users_frame.grid(row=0, column=0, padx=40, pady=10)  # Increased padding
+
+    users_label = tk.Label(users_frame, text="Total Users", font=("Arial", 12), bg="#ffffff")
+    users_label.pack(pady=(10, 0))  # Padding at the top only
+
+    users_count_label = tk.Label(users_frame, text=str(total_users), font=("Arial", 24, "bold"), bg="#ffffff")
+    users_count_label.pack(pady=(0, 10))  # Padding at the bottom only
+
+    # Total Carpools Box
+    carpools_frame = tk.Frame(box_frame, **box_style)
+    carpools_frame.grid(row=0, column=1, padx=40, pady=10)  # Add spacing between boxes
+
+    carpools_label = tk.Label(carpools_frame, text="Total Carpools", font=("Arial", 12), bg="#ffffff")
+    carpools_label.pack(pady=(10, 0))  # Padding at the top only
+
+    carpools_count_label = tk.Label(carpools_frame, text="3", font=("Arial", 24, "bold"), bg="#ffffff")
+    carpools_count_label.pack(pady=(0, 10))  # Padding at the bottom only
+
+    # Graph Frame
+    graph_frame = tk.Frame(main_content_frame, bg="#f5f5f5")
+    graph_frame.pack(pady=20)  # Add padding above the graph
+
+    # Matplotlib graph integration
+    figure = plt.Figure(figsize=(5, 3), dpi=100)
+    ax = figure.add_subplot(111)
+    ax.bar(["Total Users", "Total Carpools"], [total_users, total_carpools], color=["blue", "green"])
+    ax.set_title("Carpool System Overview")
+    ax.set_ylabel("Counts")
+
+    canvas = FigureCanvasTkAgg(figure, master=graph_frame)
+    canvas.get_tk_widget().pack()
+
     # Move notification icon to the left of the profile menu
     notification_icon = tk.Label(navbar_frame, text="🔔", font=button_font, bg=button_bg, fg=button_fg)
     notification_icon.pack(side="right", padx=10, pady=10)
 
     # Full-width bar for page title
     title_bar_frame = tk.Frame(carpool_app, bg="#000000")
-    title_bar_frame.pack(fill="x", pady=(0,40))
+    title_bar_frame.pack(fill="x", pady=0)
 
     page_title_label = tk.Label(title_bar_frame, text="Home", font=("Arial", 14, "bold"), bg="#000000", fg="#ffffff")
-    page_title_label.pack(side="left", pady=15, padx=20)
+    page_title_label.pack(side="left", pady=15, padx=5)
 
     # Main menu frame
     main_menu_frame = tk.Frame(carpool_app, bg="#ffffff")
-    main_menu_frame.pack()
+    main_menu_frame.pack(fill="both", expand=True, pady=(10, 0))  # Adjust top margin
 
     # # Option 1: View Carpool
     # view_carpool_button = tk.Button(main_menu_frame, text="View Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)
