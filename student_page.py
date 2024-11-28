@@ -308,10 +308,10 @@ def open_student_page(user_id):
     search_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
     search_carpool_form_entries = search_carpool_form(search_carpool_frame)
 
-    # Profile frame
+   # Profile frame
     profile_frame = tk.Frame(carpool_app, bg="#ffffff")
     profile_form_entries = create_profile_form(profile_frame, user_id=user_id)
-
+    
      # join Carpool frame
     join_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
     join_carpool_form_entries = join_carpool_form(join_carpool_frame)
