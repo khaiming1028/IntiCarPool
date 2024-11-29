@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import student_page
+import globals
 import mysql.connector
 
 # Database connection

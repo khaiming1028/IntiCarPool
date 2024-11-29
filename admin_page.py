@@ -46,40 +46,7 @@ def open_admin_page():
         main_menu_frame.pack()
         page_title_label.config(text="Home")
         
-    def show_create_carpool_page():
-        main_menu_frame.pack_forget()
-        create_carpool_frame.pack()
-        page_title_label.config(text="Create Carpool")
-
-    def create_carpool():
-       # Get user input
-        carpool_name = carpool_name_entry.get()
-        person_limit = carpool_available_seat_entry.get()
-        pickup_point = carpool_pickup_point_entry.get()
-        pickup_time = carpool_pickup_time_entry.get()
-        dropoff_time = carpool_dropoff_time_entry.get()
-        status = selected_status.get()
-    
         
-
-        # Validate input
-        if not all([carpool_name, person_limit, pickup_point, pickup_time, dropoff_time]):
-            messagebox.showerror("Input Error", "All fields are required!")
-            return
-
-        try:
-            # Insert data into the database
-            query = """
-                INSERT INTO carpool (carpool_name, person_limit, pickup_point, pickup_time, dropoff_time, status)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            values = (carpool_name, person_limit, pickup_point, pickup_time, dropoff_time, status)
-            cursor.execute(query, values)
-            conn.commit()
-
-            messagebox.showinfo("Success", "Carpool created successfully!")
-        except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error inserting data: {err}")
 
     def open_student_list():
         # Create a new window for displaying the student list
@@ -177,18 +144,226 @@ def open_admin_page():
             student_list_window.destroy()
 
         student_list_window.protocol("WM_DELETE_WINDOW", on_close)
+    
+    # Function to open the carpool list window and connect to the database
+    def open_carpool_list():
+        # Create a new top-level window (this is the new window)
+        carpool_list_window = tk.Toplevel()
+        carpool_list_window.title("Carpool List")  # Title of the new window
+        carpool_list_window.geometry("600x400")  # Set the size of the window (optional)
 
-    def search_carpool():
-        # Implement search carpool functionality
-        page_title_label.config(text="Search Carpool")
+        # Create the listbox to display the carpool list
+        carpool_listbox = tk.Listbox(carpool_list_window, height=10, width=80)
+        carpool_listbox.pack(pady=20)
 
-    def joined_carpool():
-        # Implement joined carpool functionality
-        page_title_label.config(text="Joined Carpool")
+        # Create a scroll bar for the listbox
+        scrollbar = tk.Scrollbar(carpool_list_window, orient="vertical", command=carpool_listbox.yview)
+        carpool_listbox.config(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
 
-    def manage_carpool():
-        # Implement manage carpool functionality
-        page_title_label.config(text="Manage Carpool")
+        # Connect to the MySQL database
+        try:
+            conn = mysql.connector.connect(
+                host=DB_HOST,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME
+            )
+            cursor = conn.cursor()
+
+            # Fetch carpool data from the database
+            query = "SELECT id, carpool_name, available_seat, pickup_point, pickup_datetime, status FROM carpool"
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            # Insert carpool data into the listbox
+            for row in rows:
+                carpool_listbox.insert(tk.END, f"ID: {row[0]} | Name: {row[1]} | Seats: {row[2]} | Pickup: {row[3]} | Time: {row[4]} | Status: {row[5]}")
+
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error fetching data: {err}")
+
+        def fetch_and_display_carpools():
+            carpool_listbox.delete(0, tk.END)  # Clear previous entries
+            try:
+                query = "SELECT id, carpool_name, available_seat, pickup_point, pickup_datetime, status FROM carpool"
+                cursor.execute(query)
+                rows = cursor.fetchall()
+
+                if not rows:
+                    carpool_listbox.insert(tk.END, "No carpools available.")
+                else:
+                    for carpool in rows:
+                        id, name, seat, pickup, time, status = carpool
+                        display_text = (
+                            f"Carpool ID: {id} | Name: {name} | Seats: {seat} | "
+                            f"Pickup: {pickup} | Time: {time} | Status: {status}"
+                        )
+                        carpool_listbox.insert(tk.END, display_text)  # Insert into listbox
+            except mysql.connector.Error as err:
+                messagebox.showerror("Database Error", f"Error fetching data: {err}")
+
+
+        # Function to delete a selected carpool from the list and database
+        def delete_carpool():
+            try:
+                # Ensure a carpool is selected
+                selected_index = carpool_listbox.curselection()
+                if not selected_index:
+                    messagebox.showerror("Selection Error", "Please select a carpool to delete.")
+                    return
+
+                # Get the selected carpool and extract the carpool ID
+                selected_carpool = carpool_listbox.get(selected_index)
+                print(f"Selected Carpool for Deletion: {selected_carpool}")  # Debugging
+                carpool_id = selected_carpool.split('|')[0].split(': ')[1].strip()
+                print(f"Carpool ID: {carpool_id}")  # Debugging
+
+                # Check if carpool_id is valid (not empty or None)
+                if not carpool_id:
+                    messagebox.showerror("Error", "Invalid Carpool ID.")
+                    return
+        
+                # Connect to the database and delete the carpool
+                conn = mysql.connector.connect(
+                    host=DB_HOST,
+                    user=DB_USER,
+                    password=DB_PASSWORD,
+                    database=DB_NAME
+                )
+                cursor = conn.cursor()
+
+                # Delete query
+                delete_query = "DELETE FROM carpool WHERE id = %s"
+                cursor.execute(delete_query, (carpool_id,))
+
+                # Commit the changes
+                conn.commit()
+
+                # Check if a row was actually deleted
+                if cursor.rowcount == 0:
+                    messagebox.showwarning("No Deletions", "No carpool found with the selected ID.")
+                else:
+                    messagebox.showinfo("Success", "Carpool successfully deleted.")
+
+                # Refresh the carpool list after deletion
+                fetch_and_display_carpools()
+
+            except mysql.connector.Error as err:
+                messagebox.showerror("Database Error", f"Error deleting carpool: {err}")
+            finally:
+                # Close the connection
+                if conn.is_connected():
+                    cursor.close()
+                    conn.close()
+
+
+        # Function to edit a selected carpool
+        def open_edit_carpool_window(carpool_id):
+            # Open the edit carpool window
+            edit_window = tk.Toplevel()  # Creates a new top-level window
+            edit_window.title("Edit Carpool")
+
+            # Set the window size (width x height)
+            edit_window.geometry("400x400")
+
+            # Fetch carpool details from the database based on carpool_id
+            cursor.execute("SELECT carpool_name, available_seat, pickup_point, pickup_datetime, status FROM carpool WHERE id = %s", (carpool_id,))
+            carpool = cursor.fetchone()
+    
+            if carpool is None:
+                messagebox.showerror("Error", "Carpool not found.")
+                return
+
+            # Unpack the values returned from the query
+            carpool_name, available_seat, pickup_point, pickup_datetime, status = carpool
+
+            # Create Labels and Entries for editing
+            carpool_name_label = tk.Label(edit_window, text="Carpool Name:")
+            carpool_name_label.grid(row=0, column=0, sticky="e", padx=10, pady=10)
+            carpool_name_entry = tk.Entry(edit_window)
+            carpool_name_entry.grid(row=0, column=1, padx=10, pady=10)
+            carpool_name_entry.insert(0, carpool_name)
+
+            available_seat_label = tk.Label(edit_window, text="Available Seats:")
+            available_seat_label.grid(row=1, column=0, sticky="e", padx=10, pady=10)
+            available_seat_entry = tk.Entry(edit_window)
+            available_seat_entry.grid(row=1, column=1, padx=10, pady=10)
+            available_seat_entry.insert(0, available_seat)
+
+            pickup_point_label = tk.Label(edit_window, text="Pickup Point:")
+            pickup_point_label.grid(row=2, column=0, sticky="e", padx=10, pady=10)
+            pickup_point_entry = tk.Entry(edit_window)
+            pickup_point_entry.grid(row=2, column=1, padx=10, pady=10)
+            pickup_point_entry.insert(0, pickup_point)
+
+            pickup_time_label = tk.Label(edit_window, text="Pickup Time:")
+            pickup_time_label.grid(row=3, column=0, padx=10, pady=10)
+            pickup_time_entry = tk.Entry(edit_window)
+            pickup_time_entry.grid(row=3, column=1, padx=10, pady=10)
+            pickup_time_entry.insert(0, pickup_datetime)
+
+
+            # The Save Changes button
+            save_button = tk.Button(edit_window, text="Save Changes", command=lambda: save_changes(carpool_id, carpool_name_entry, available_seat_entry, pickup_point_entry))
+            save_button.grid(row=3, columnspan=2, pady=20)  # Place button in the grid
+
+            
+
+
+            def save_changes():
+                new_carpool_name = carpool_name_entry.get()
+                new_available_seat = available_seat_entry.get()
+                new_pickup_point = pickup_point_entry.get()
+                new_pickup_time = pickup_time_entry.get()
+                # Validate the fields
+                if not new_carpool_name or not new_available_seat or not new_pickup_point or not new_pickup_time:
+                    messagebox.showerror("Error", "All fields are required!")
+                    return
+        
+                # Update the carpool in the database
+                try:
+                    cursor.execute("""
+                        UPDATE carpool
+                        SET carpool_name = %s, available_seat = %s, pickup_point = %s, pickup_datetime = %s, status = %s
+                        WHERE id = %s
+                    """, (new_carpool_name, new_available_seat, new_pickup_point, new_pickup_time, carpool_id))
+                    conn.commit()  # Commit the changes to the database
+                    messagebox.showinfo("Success", "Carpool updated successfully.")
+                    edit_window.destroy()  # Close the edit window after saving
+                    fetch_and_display_carpools()  # Refresh the carpool list
+
+                except mysql.connector.Error as err:
+                    messagebox.showerror("Database Error", f"Error updating carpool: {err}")
+
+
+
+
+        # This function is called when the "Edit" button is pressed in the main window.
+        def edit_carpool():
+            # Ensure a carpool is selected
+            selected_index = carpool_listbox.curselection()
+            if not selected_index:
+                messagebox.showerror("Selection Error", "Please select a carpool to edit.")
+                return
+
+            selected_carpool = carpool_listbox.get(selected_index)
+            carpool_id = int(selected_carpool.split('|')[0].split(': ')[1].strip())  # Extract carpool ID from the selected text
+
+            # Open the edit window for the selected carpool
+            open_edit_carpool_window(carpool_id)
+
+
+        # Create Delete and Edit Buttons
+        delete_button = tk.Button(carpool_list_window, text="Delete Carpool", command=delete_carpool)
+        delete_button.pack(pady=10)
+
+        edit_button = tk.Button(carpool_list_window, text="Edit Carpool", command=edit_carpool)
+        edit_button.pack(pady=10)
+
+        # Add a button to close the window
+        close_button = tk.Button(carpool_list_window, text="Close", command=carpool_list_window.destroy)
+        close_button.pack(pady=10)
 
     def profile():
         # Implement profile functionality
@@ -246,14 +421,8 @@ def open_admin_page():
     home_button = tk.Button(navbar_frame, text="Home", command=show_main_menu, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     home_button.pack(side="left", padx=10, pady=10)
 
-    search_carpool_button = tk.Button(navbar_frame, text="Search Carpool", command=search_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
-    search_carpool_button.pack(side="left", padx=10, pady=10)
-
-    create_carpool_nav_button = tk.Button(navbar_frame, text="Create Carpool", command=show_create_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
-    create_carpool_nav_button.pack(side="left", padx=10, pady=10)
-
-    joined_carpool_button = tk.Button(navbar_frame, text="Joined Carpool", command=joined_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
-    joined_carpool_button.pack(side="left", padx=10, pady=10)
+    carpool_list_button = tk.Button(navbar_frame, text="Carpool List", command=open_carpool_list, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    carpool_list_button.pack(side="left", padx=10, pady=10)
 
     student_list_button = tk.Button(navbar_frame, text="Student List", command=open_student_list, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     student_list_button.pack(side="left", padx=10, pady=10)
@@ -263,7 +432,6 @@ def open_admin_page():
     profile_menu.menu = tk.Menu(profile_menu, tearoff=0)
     profile_menu["menu"] = profile_menu.menu
 
-    profile_menu.menu.add_command(label="Manage Carpool", command=manage_carpool)
     profile_menu.menu.add_command(label="Profile", command=profile)
     profile_menu.menu.add_separator()
     profile_menu.menu.add_command(label="Logout", command=logout)
@@ -351,18 +519,6 @@ def open_admin_page():
     main_menu_frame = tk.Frame(carpool_app, bg="#ffffff")
     main_menu_frame.pack(fill="both", expand=True, pady=(10, 0))  # Adjust top margin
 
-    # # Option 1: View Carpool
-    # view_carpool_button = tk.Button(main_menu_frame, text="View Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)
-    # view_carpool_button.pack(pady=10)
-
-    # # Option 2: Join Carpool
-    # join_carpool_button = tk.Button(main_menu_frame, text="Join Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)
-    # join_carpool_button.pack(pady=10)
-
-    # # Option 3: Create Carpool
-    # create_carpool_button = tk.Button(main_menu_frame, text="Create Carpool", command=create_carpool, font=("Arial", 12), bg="blue", fg="white", width=20)
-    # create_carpool_button.pack(pady=10)
-
     # Create Carpool frame
     create_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
 
@@ -411,11 +567,6 @@ def open_admin_page():
     carpool_status_dropdown = tk.OptionMenu(create_carpool_frame, selected_status, *status_options)
     carpool_status_dropdown.config(font=("Arial", 12), width=27)  # Customize dropdown style
     carpool_status_dropdown.grid(row=5, column=1, padx=10, pady=5)
-
-    # Submit Button
-    submit_button = tk.Button(create_carpool_frame, text="Submit", command=create_carpool, font=("Arial", 12), bg="green", fg="white", width=10)
-    submit_button.grid(row=6, columnspan=2, pady=10)
-
 
     # Footer frame
     footer_frame = tk.Frame(carpool_app, bg="red")
