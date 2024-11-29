@@ -78,7 +78,6 @@ def confirm_leave_carpool(carpool, user_id, parent_frame):
     response = messagebox.askyesno("Confirm Leave", "Are you sure you want to leave this carpool?")
     if response:
         leave_carpool(carpool_application_id, parent_frame, user_id)
-
 def leave_carpool(carpool_application_id, parent_frame, user_id):
     # Function to handle leaving the carpool
     try:
@@ -91,21 +90,47 @@ def leave_carpool(carpool_application_id, parent_frame, user_id):
         )
         cursor = db_connection.cursor()
 
-        # Delete the carpool application from the database
-        delete_query = "DELETE FROM carpool_application WHERE id = %s"
-        cursor.execute(delete_query, (carpool_application_id,))
-        db_connection.commit()
+        # Step 1: Get the carpool_id associated with the application
+        select_carpool_query = "SELECT carpool_id FROM carpool_application WHERE id = %s"
+        cursor.execute(select_carpool_query, (carpool_application_id,))
+        carpool_id = cursor.fetchone()
 
-        # Refresh the parent frame to reflect the changes
-        for widget in parent_frame.winfo_children():
-            widget.destroy()
-        join_carpool_form(parent_frame, user_id)
+        if carpool_id:
+            carpool_id = carpool_id[0]
+
+            # Step 2: Update the availability in the carpool table by increasing the available seats
+            update_availability_query = "UPDATE carpool SET available_seat = available_seat + 1 WHERE id = %s"
+            cursor.execute(update_availability_query, (carpool_id,))
+            db_connection.commit()
+
+            # Step 3: Check if available_seat > 0, and update the status of the carpool to 'Available'
+            check_availability_query = "SELECT available_seat FROM carpool WHERE id = %s"
+            cursor.execute(check_availability_query, (carpool_id,))
+            available_seat = cursor.fetchone()
+
+            if available_seat and available_seat[0] > 0:
+                update_status_query = "UPDATE carpool SET status = 'Available' WHERE id = %s"
+                cursor.execute(update_status_query, (carpool_id,))
+                db_connection.commit()
+
+            # Step 4: Delete the carpool application record to remove the user from the carpool
+            delete_query = "DELETE FROM carpool_application WHERE id = %s"
+            cursor.execute(delete_query, (carpool_application_id,))
+            db_connection.commit()
+
+            # Refresh the parent frame to reflect the changes
+            for widget in parent_frame.winfo_children():
+                widget.destroy()
+            join_carpool_form(parent_frame, user_id)
+
+            messagebox.showinfo("Leave Carpool", "You have successfully left the carpool.")
+
+        else:
+            messagebox.showerror("Error", "No carpool found for the given application.")
 
         # Close the database connection
         cursor.close()
         db_connection.close()
-
-        messagebox.showinfo("Leave Carpool", "You have successfully left the carpool.")
 
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Error: {err}")
