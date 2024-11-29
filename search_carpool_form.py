@@ -57,7 +57,7 @@ def search_carpool_form(parent_frame, user_id):
             # Query the database to find matching carpool
             query = """
                 SELECT * FROM carpool
-                WHERE pickup_datetime = %s AND pickup_point LIKE %s
+                WHERE pickup_datetime = %s AND pickup_point LIKE %s AND status != 'Full'
             """
             cursor.execute(query, (pickup_datetime, "%" + pickup_point + "%"))
             results = cursor.fetchall()
