@@ -1,10 +1,19 @@
+
 import tkinter as tk
 from tkinter import messagebox
-import carpool_form  # Import the renamed module
-import carpool_list
-import globals
+from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
 import mysql.connector
+from datetime import datetime  # Import datetime module
+from tkintermapview import TkinterMapView
+from geopy.geocoders import Nominatim 
+import requests
+from create_carpool_form import create_carpool_form  # Import the create_carpool_form function
+from search_carpool_form import search_carpool_form  # Import the search_carpool_form function
+from profile_form import create_profile_form  # Import the create_profile_form function
+from join_carpool_form import join_carpool_form  # Import the join_carpool_form function
 
+
+GOOGLE_API_KEY = "AIzaSyC4GMTOjpDLoMQsQKBc1y64bPTwJFsPgBg"
 
 # MySQL Database Configuration
 DB_HOST = "localhost"  # Replace with your database host
@@ -12,8 +21,8 @@ DB_USER = "root"       # Replace with your MySQL username
 DB_PASSWORD = ""  # Replace with your MySQL password
 DB_NAME = "carpool_system"    # Replace with your database name
 
-def open_student_page():
-     # Connect to MySQL Database
+def open_student_page(user_id):
+    # Connect to MySQL Database
     try:
         conn = mysql.connector.connect(
             host=DB_HOST,
@@ -36,48 +45,150 @@ def open_student_page():
 
     # Define button functions for carpool options
     def show_main_menu():
-        create_carpool_frame.pack_forget()
+        hide_all_frames()
         main_menu_frame.pack()
         page_title_label.config(text="Home")
+
     def show_create_carpool_page():
-        main_menu_frame.pack_forget()
+        hide_all_frames()
         create_carpool_frame.pack()
         page_title_label.config(text="Create Carpool")
 
-    def create_carpool():
-        driver_id = globals.logged_in_user_id
-        if not driver_id:
-            messagebox.showerror("Error", "Driver ID is not valid.")
-            return
+    def show_search_carpool_page():
+        hide_all_frames()
+        search_carpool_frame.pack()
+        page_title_label.config(text="Search Carpool")
 
-       # Get user input
-        carpool_name = carpool_name_entry.get()
-        available_seat = carpool_available_seat_entry.get()
-        pickup_point = carpool_pickup_point_entry.get()
-        pickup_time = carpool_pickup_time_entry.get()
-        dropoff_time = carpool_dropoff_time_entry.get()
-        status = selected_status.get()
-    
+    def show_profile_page():
+        hide_all_frames()
+        profile_frame.pack()
+        page_title_label.config(text="My Profile")
+        fetch_and_display_user_data(user_id)
         
+    def show_join_carpool_page():
+        hide_all_frames()
+        join_carpool_frame.pack()
+        page_title_label.config(text="Join Carpool")
+
+
+    def hide_all_frames():
+        main_menu_frame.pack_forget()
+        create_carpool_frame.pack_forget()
+        search_carpool_frame.pack_forget()
+        profile_frame.pack_forget()
+        join_carpool_frame.pack_forget()  
+
+
+    def create_carpool():
+        # Get user input
+        carpool_name = carpool_form_entries["carpool_name_entry"].get()
+        available_seat = carpool_form_entries["carpool_available_seat_entry"].get()
+        pickup_point = carpool_form_entries["carpool_pickup_point_entry"].get()
+        pickup_date = carpool_form_entries["carpool_pickup_date_entry"].get()
+        pickup_hour = carpool_form_entries["carpool_pickup_hour_entry"].get()
+        pickup_minute = carpool_form_entries["carpool_pickup_minute_entry"].get()
+        dropoff_hour = carpool_form_entries["carpool_dropoff_hour_entry"].get()
+        dropoff_minute = carpool_form_entries["carpool_dropoff_minute_entry"].get()
+        dropoff_time = f"{dropoff_hour}:{dropoff_minute}"
+        status = "available"
+
+        # Combine pickup date and time
+        pickup_time = f"{pickup_hour}:{pickup_minute}"
+        pickup_datetime = f"{pickup_date} {pickup_time}"
 
         # Validate input
-        if not all([carpool_name, available_seat, pickup_point, pickup_time, dropoff_time]):
+        if not all([carpool_name, pickup_date, pickup_hour, pickup_minute, dropoff_hour, dropoff_minute, available_seat, pickup_point]):
             messagebox.showerror("Input Error", "All fields are required!")
             return
 
         try:
+            # Combine pickup date and time
+            pickup_datetime = datetime.strptime(pickup_datetime, "%m/%d/%y %H:%M").strftime("%Y-%m-%d %H:%M:%S")
+            dropoff_time = datetime.strptime(dropoff_time, "%H:%M").strftime("%H:%M:%S")
+
             # Insert data into the database
             query = """
-                INSERT INTO carpool (carpool_name, driver_id, available_seat, pickup_point, pickup_time, dropoff_time, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO carpool (carpool_name, available_seat, pickup_point, pickup_datetime, dropoff_time, status)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """
-            values = (carpool_name, driver_id, available_seat, pickup_point, pickup_time, dropoff_time, status)
+            values = (carpool_name, available_seat, pickup_point, pickup_datetime, dropoff_time, status)
             cursor.execute(query, values)
             conn.commit()
 
             messagebox.showinfo("Success", "Carpool created successfully!")
         except mysql.connector.Error as err:
             messagebox.showerror("Database Error", f"Error inserting data: {err}")
+
+    # Function to search for the place and show it on the map
+    def search_from_google_map():
+        google_map_page = tk.Toplevel(create_carpool_frame)
+        google_map_page.title("Google Map")
+        google_map_page.geometry("800x800")
+
+        geolocator = Nominatim(user_agent="google_map_search")
+        
+        # Map widget
+        map_widget = TkinterMapView(google_map_page, width=600, height=400, corner_radius=0)
+        map_widget.pack(fill="both", expand=True)
+
+        # Use Google Maps tile server
+        map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
+
+        # Variable to store the marker
+        global current_marker
+        current_marker = None
+
+        # Function to search for a location
+        def search_place():
+            place = search_entry.get()
+            if place:
+                geocode_url = f"https://maps.googleapis.com/maps/api/geocode/json?address={place}&key={GOOGLE_API_KEY}"
+                response = requests.get(geocode_url)
+                data = response.json()
+
+                if data["status"] == "OK":
+                    # Extract latitude and longitude
+                    location = data["results"][0]["geometry"]["location"]
+                    lat, lng = location["lat"], location["lng"]
+
+                    # Update map position and add a marker
+                    map_widget.set_position(lat, lng, zoom=15)
+                    global current_marker
+                    if current_marker:  # Remove existing marker
+                        current_marker.delete()
+                    current_marker = map_widget.set_marker(lat, lng)
+                else:
+                    print("Error from Geocoding API:", data.get("error_message", "Unknown error"))
+
+        # Function to set the pickup location
+        def set_pickup_location():
+            if current_marker:
+                # Get the position (latitude, longitude)
+                lat, lng = current_marker.position
+                
+                # Convert coordinates to address
+                location = geolocator.reverse((lat, lng), language='en')
+                
+                if location:
+                    # Display the address in the entry widget
+                    carpool_form_entries["carpool_pickup_point_entry"].delete(0, tk.END)
+                    carpool_form_entries["carpool_pickup_point_entry"].insert(0, location.address)
+                else:
+                    print("Address not found!")
+                
+                google_map_page.destroy()
+            else:
+                print("No location selected!")
+
+        # Search bar and button
+        search_entry = tk.Entry(google_map_page, width=40)
+        search_entry.pack(pady=10)
+        
+        search_button = tk.Button(google_map_page, text="Search", command=search_place)
+        search_button.pack(pady=5)
+        # Confirm button
+        confirm_button = tk.Button(google_map_page, text="Set as Pickup Point", command=set_pickup_location)
+        confirm_button.pack(pady=10)
 
     def search_carpool():
         # Implement search carpool functionality
@@ -90,33 +201,6 @@ def open_student_page():
     def manage_carpool():
         # Implement manage carpool functionality
         page_title_label.config(text="Manage Carpool")
-        
-    def view_carpool():
-    # Clear previous frames and switch to the View Carpool frame
-        create_carpool_frame.pack_forget()
-        main_menu_frame.pack_forget()
-        view_carpool_frame.pack(fill="both", expand=True)
-        page_title_label.config(text="View Carpool")
-
-        # Clear the listbox to refresh data
-        carpool_listbox.delete(0, tk.END)
-
-        try:
-            # Fetch all data from the carpool table
-            query = "SELECT carpool_name, available_seat, pickup_point, pickup_time, dropoff_time, status FROM carpool"
-            cursor.execute(query)
-            rows = cursor.fetchall()
-
-            if not rows:
-                carpool_listbox.insert(tk.END, "No carpools found.")
-            else:
-                for row in rows:
-                    carpool_listbox.insert(
-                        tk.END,
-                        f"Name: {row[0]}, Seats: {row[1]}, Pickup: {row[2]}, Pickup Time: {row[3]}, Dropoff Time: {row[4]}, Status: {row[5]}"
-                    )
-        except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error fetching data: {err}")
 
     def profile():
         # Implement profile functionality
@@ -124,6 +208,39 @@ def open_student_page():
 
     def logout():
         carpool_app.destroy()
+
+    def fetch_and_display_user_data(user_id):
+        try:
+            # Fetch user data from the database
+            query = "SELECT username, email, contact FROM User WHERE id = %s"
+            cursor.execute(query, (user_id,))
+            result = cursor.fetchone()
+
+            if result:
+                user_data = {
+                    "username": result[0],
+                    "email": result[1],
+                    "contact": result[2]
+                }
+                # Populate the profile form with user data
+                profile_form_entries["user_name_entry"].config(state=tk.NORMAL)
+                profile_form_entries["user_name_entry"].delete(0, tk.END)
+                profile_form_entries["user_name_entry"].insert(0, user_data["username"])
+                profile_form_entries["user_name_entry"].config(state=tk.DISABLED)
+
+                profile_form_entries["email_entry"].config(state=tk.NORMAL)
+                profile_form_entries["email_entry"].delete(0, tk.END)
+                profile_form_entries["email_entry"].insert(0, user_data["email"])
+                profile_form_entries["email_entry"].config(state=tk.DISABLED)
+
+                profile_form_entries["phone_entry"].config(state=tk.NORMAL)
+                profile_form_entries["phone_entry"].delete(0, tk.END)
+                profile_form_entries["phone_entry"].insert(0, user_data["contact"])
+                profile_form_entries["phone_entry"].config(state=tk.DISABLED)
+            else:
+                messagebox.showerror("Error", "User data not found")
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error fetching user data: {err}")
 
     # Navbar frame
     navbar_frame = tk.Frame(carpool_app, bg="#ffffff")
@@ -142,25 +259,21 @@ def open_student_page():
     home_button = tk.Button(navbar_frame, text="Home", command=show_main_menu, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     home_button.pack(side="left", padx=10, pady=10)
 
-    search_carpool_button = tk.Button(navbar_frame, text="Search Carpool", command=search_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    search_carpool_button = tk.Button(navbar_frame, text="Search Carpool", command=show_search_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     search_carpool_button.pack(side="left", padx=10, pady=10)
 
     create_carpool_nav_button = tk.Button(navbar_frame, text="Create Carpool", command=show_create_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     create_carpool_nav_button.pack(side="left", padx=10, pady=10)
 
-    joined_carpool_button = tk.Button(navbar_frame, text="Joined Carpool", command=joined_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
-    joined_carpool_button.pack(side="left", padx=10, pady=10)
-
-    view_carpool_button = tk.Button(navbar_frame, text="View Carpool", command=view_carpool, font=button_font, bg=button_bg, fg=button_fg, bd=0)
-    view_carpool_button.pack(side="left", padx=10, pady=10)
-
+    join_button = tk.Button(navbar_frame, text="Join Carpool", command=show_join_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    join_button.pack(side="left", padx=10)
     # Dropdown menu for "My Profile"
     profile_menu = tk.Menubutton(navbar_frame, text="My Profile", font=button_font, bg=button_bg, fg=button_fg, bd=0, relief="flat")
     profile_menu.menu = tk.Menu(profile_menu, tearoff=0)
     profile_menu["menu"] = profile_menu.menu
 
     profile_menu.menu.add_command(label="Manage Carpool", command=manage_carpool)
-    profile_menu.menu.add_command(label="Profile", command=profile)
+    profile_menu.menu.add_command(label="Profile", command=show_profile_page)
     profile_menu.menu.add_separator()
     profile_menu.menu.add_command(label="Logout", command=logout)
 
@@ -180,199 +293,29 @@ def open_student_page():
     # Main menu frame
     main_menu_frame = tk.Frame(carpool_app, bg="#ffffff")
     main_menu_frame.pack()
-
-    # # Option 1: View Carpool
-    # view_carpool_button = tk.Button(main_menu_frame, text="View Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)
-    # view_carpool_button.pack(pady=10)
-
-    # # Option 2: Join Carpool
-    # join_carpool_button = tk.Button(main_menu_frame, text="Join Carpool", font=("Arial", 12), bg="blue", fg="white", width=20)
-    # join_carpool_button.pack(pady=10)
-
-    # # Option 3: Create Carpool
-    # create_carpool_button = tk.Button(main_menu_frame, text="Create Carpool", command=create_carpool, font=("Arial", 12), bg="blue", fg="white", width=20)
-    # create_carpool_button.pack(pady=10)
+    tk.Label(main_menu_frame, text="Welcome to IICP Carpooling System", font=("Arial", 18, "bold"), bg="#ffffff").pack(pady=20)
+    tk.Label(main_menu_frame, text="Connect with fellow IICP students to carpool together to campus, reduce traffic congestion, and lower your carbon footprint!", font=("Arial", 12), bg="#ffffff").pack(pady=10)
+    car_image = tk.PhotoImage(file="homeCar.png")
+    car_image_label = tk.Label(main_menu_frame, image=car_image, bg="#ffffff")
+    car_image_label.pack(pady=20)
+    tk.Button(main_menu_frame, text="Search for Carpools", command=search_carpool, font=("Arial", 14), bg="#dd6f6f", fg="#ffffff").pack(pady=20)
 
     # Create Carpool frame
     create_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
+    carpool_form_entries = create_carpool_form(create_carpool_frame, create_carpool, search_from_google_map)
 
-     # Carpool Name Label and Entry
-    carpool_name_label = tk.Label(create_carpool_frame, text="Carpool Name:", font=("Arial", 12), bg="#ffffff")
-    carpool_name_label.grid(row=0, column=0, padx=10, pady=5, sticky="e")
-    carpool_name_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_name_entry.grid(row=0, column=1, padx=10, pady=5)
+    # Search Carpool frame
+    search_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
+    search_carpool_form_entries = search_carpool_form(search_carpool_frame)
 
-    # Carpool Available Seats Label and Entry
-    carpool_available_seat_label = tk.Label(create_carpool_frame, text="Available Seats:", font=("Arial", 12), bg="#ffffff")
-    carpool_available_seat_label.grid(row=1, column=0, padx=10, pady=5, sticky="e")
-    carpool_available_seat_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_available_seat_entry.grid(row=1, column=1, padx=10, pady=5)
+   # Profile frame
+    profile_frame = tk.Frame(carpool_app, bg="#ffffff")
+    profile_form_entries = create_profile_form(profile_frame, user_id=user_id)
+    
+     # join Carpool frame
+    join_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
+    join_carpool_form_entries = join_carpool_form(join_carpool_frame)
 
-    # Carpool Pickup Point Label and Entry
-    carpool_pickup_point_label = tk.Label(create_carpool_frame, text="Pickup Point:", font=("Arial", 12), bg="#ffffff")
-    carpool_pickup_point_label.grid(row=2, column=0, padx=10, pady=5, sticky="e")
-    carpool_pickup_point_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_pickup_point_entry.grid(row=2, column=1, padx=10, pady=5)
-
-    # Carpool Time Label and Entry
-    carpool_pickup_time_label = tk.Label(create_carpool_frame, text="Time:", font=("Arial", 12), bg="#ffffff")
-    carpool_pickup_time_label.grid(row=3, column=0, padx=10, pady=5, sticky="e")
-    carpool_pickup_time_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_pickup_time_entry.grid(row=3, column=1, padx=10, pady=5)
-
-    # Carpool Dropoff Time Label and Entry
-    carpool_dropoff_time_label = tk.Label(create_carpool_frame, text="Dropoff Time:", font=("Arial", 12), bg="#ffffff")
-    carpool_dropoff_time_label.grid(row=4, column=0, padx=10, pady=5, sticky="e")
-    carpool_dropoff_time_entry = tk.Entry(create_carpool_frame, font=("Arial", 12), width=30)
-    carpool_dropoff_time_entry.grid(row=4, column=1, padx=10, pady=5)
-
-    # Create the label for carpool status
-    carpool_status_label = tk.Label(create_carpool_frame, text="Status:", font=("Arial", 12), bg="#ffffff")
-    carpool_status_label.grid(row=5, column=0, padx=10, pady=5, sticky="e")
-
-    # Define the dropdown options for carpool status
-    status_options = ["Available", "Closed"]
-
-    # Create a StringVar to hold the selected status
-    selected_status = tk.StringVar()
-    selected_status.set(status_options[0])  # Set the default value to "Available"
-
-    # Create the dropdown (OptionMenu) for carpool status
-    carpool_status_dropdown = tk.OptionMenu(create_carpool_frame, selected_status, *status_options)
-    carpool_status_dropdown.config(font=("Arial", 12), width=27)  # Customize dropdown style
-    carpool_status_dropdown.grid(row=5, column=1, padx=10, pady=5)
-
-    # Submit Button
-    submit_button = tk.Button(create_carpool_frame, text="Submit", command=create_carpool, font=("Arial", 12), bg="green", fg="white", width=10)
-    submit_button.grid(row=6, columnspan=2, pady=10)
-
-        # View Carpool frame
-    view_carpool_frame = tk.Frame(carpool_app, bg="#f5f5f5")  # Light background color
-
-    # Title label with enhanced styling
-    view_carpool_title_label = tk.Label(
-        view_carpool_frame,
-        text="Available Carpools",
-        font=("Arial", 16, "bold"),
-        bg="#f5f5f5",
-        fg="#333333"  # Dark gray text
-    )
-    view_carpool_title_label.pack(pady=(20, 10))
-
-    # Frame to hold the Listbox and scrollbar
-    carpool_list_frame = tk.Frame(view_carpool_frame, bg="#f5f5f5")
-    carpool_list_frame.pack(pady=10, padx=20)
-
-    # Scrollbar for the Listbox
-    scrollbar = tk.Scrollbar(carpool_list_frame)
-    scrollbar.pack(side="right", fill="y")
-
-    # Listbox to display carpool data with styled borders and font
-    carpool_listbox = tk.Listbox(
-        carpool_list_frame,
-        font=("Arial", 12),
-        width=80,
-        height=15,
-        bg="#ffffff",
-        fg="#333333",
-        bd=2,
-        relief="groove",  # Border style
-        yscrollcommand=scrollbar.set
-    )
-    carpool_listbox.pack(side="left", fill="both", expand=True)
-    scrollbar.config(command=carpool_listbox.yview)
-
-
-    # Fetch and Display Carpool Data with a Join Button
-    # Fetch and Display Carpool Data
-    def fetch_and_display_carpools():
-        carpool_listbox.delete(0, tk.END)  # Clear previous entries
-        try:
-            query = "SELECT id, carpool_name, available_seat, pickup_point, pickup_time, status FROM carpool"
-            cursor.execute(query)
-            rows = cursor.fetchall()
-
-            if not rows:
-                carpool_listbox.insert(tk.END, "No carpools available.")
-            else:
-                for carpool in rows:
-                    id, name, seat, pickup, time, status = carpool
-                    display_text = (
-                        f"Carpool ID: {id} | Name: {name} | Seats: {seat} | "
-                        f"Pickup: {pickup} | Time: {time} | Status: {status}"
-                    )
-                    carpool_listbox.insert(tk.END, display_text)  # Add to Listbox
-
-        except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error fetching data: {err}")
-
-    # Call fetch function to display carpools
-    fetch_and_display_carpools()
-
-    # Join Carpool Functionality
-    def join_carpool():
-        try:
-            # Ensure the user is logged in
-            if globals.logged_in_user_id is None:
-                messagebox.showerror("Error", "User is not logged in.")
-                return
-
-            # Ensure a carpool is selected
-            selected_index = carpool_listbox.curselection()
-            if not selected_index:
-                messagebox.showerror("Selection Error", "Please select a carpool to join.")
-                return
-
-            # Get the selected carpool text
-            selected_carpool = carpool_listbox.get(selected_index)
-            
-            # Extract the Carpool ID
-            try:
-                carpool_id = int(selected_carpool.split('|')[0].split(': ')[1].strip())
-            except (IndexError, ValueError):
-                carpool_id = 0  # Default to 0 if extraction fails
-
-            # Insert the application into the carpool_application table
-            query = "INSERT INTO carpool_application (carpool_id, user_id, status) VALUES (%s, %s, %s)"
-            values = (carpool_id, globals.logged_in_user_id, "Pending")
-            cursor.execute(query, values)
-            conn.commit()
-
-            messagebox.showinfo("Success", f"You have successfully applied to join Carpool ID {carpool_id}.")
-        except mysql.connector.Error as err:
-            messagebox.showerror("Database Error", f"Error: {err}")
-
-
-
-    # Join Carpool Button
-    join_carpool_button = tk.Button(
-        view_carpool_frame,
-        text="Join Selected Carpool",
-        command=join_carpool,
-        font=("Arial", 12, "bold"),
-        bg="#28a745",  # Green background
-        fg="white",
-        bd=0,
-        padx=10,
-        pady=5
-    )
-    join_carpool_button.pack(pady=20)
-
-    # Back to Home Button
-    back_to_home_button = tk.Button(
-        view_carpool_frame,
-        text="Back to Home",
-        command=show_main_menu,
-        font=("Arial", 12, "bold"),
-        bg="#007bff",  # Blue background
-        fg="white",
-        bd=0,
-        padx=10,
-        pady=5
-    )
-    back_to_home_button.pack(pady=10)
-
-   
     # Footer frame
     footer_frame = tk.Frame(carpool_app, bg="red")
     footer_frame.pack(fill="x", side="bottom")

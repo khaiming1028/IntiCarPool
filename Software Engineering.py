@@ -4,12 +4,13 @@ import student_page
 import globals
 import mysql.connector
 
-mysqldb = mysql.connector.connect(host="localhost",user="root",password="",database="carpool_system")
+mysqldb = mysql.connector.connect(host="localhost", user="root", password="", database="carpool_system")
 mysqlcursor = mysqldb.cursor()
+
 #create carpool_application table
-#mysqlcursor.execute("create table Carpool_Application(id INT,user_id INT,carpool_id INT)")
+# mysqlcursor.execute("create table Carpool_Application(id INT,user_id INT,carpool_id INT)")
 #Create Carpool table
-#mysqlcursor.execute("create table Carpool(id INT,driver_id INT,carpool_name VARCHAR(30),available_seat INT,pickup_point VARCHAR(30),pickup_time VARCHAR(30),dropoff_time VARCHAR(30),status VARCHAR(30))")
+# mysqlcursor.execute("create table Carpool(id INT,driver_id INT,carpool_name VARCHAR(30),available_seat INT,pickup_point VARCHAR(30),pickup_time VARCHAR(30),dropoff_time VARCHAR(30),status VARCHAR(30))")
 #Create User table
 #mysqlcursor.execute("create table User(id INT,email VARCHAR(30),username VARCHAR(30),password VARCHAR(30),contact VARCHAR(30),car_type VARCHAR(30),car_name VARCHAR(30),car_plate VARCHAR(30))")
 #create feedback table
@@ -19,7 +20,6 @@ mysqlcursor = mysqldb.cursor()
 #mysqlcursor.execute("ALTER TABLE Carpool_Application ADD COLUMN feedback INT")
 ##
 #mysqlcursor.execute("ALTER TABLE Car CHANGE car_id id INT")
-
 
 def check_login():
     username = username_entry.get()
@@ -40,21 +40,16 @@ def check_login():
 
     try:
         # Query the database to check for matching username and password
-        query = "SELECT id, username FROM User WHERE username = %s AND password = %s"
+        query = "SELECT id FROM User WHERE username = %s AND password = %s"
         mysqlcursor.execute(query, (username, password))
         result = mysqlcursor.fetchone()
 
         if result:
-            #Extract id and name
-            user_id, user_username = result
-
-            # Store the user ID globally for later use (e.g., joining carpools)
-            globals.logged_in_user_id = user_id
-
+            user_id = result[0]
             # Login successful for regular users
             messagebox.showinfo("Login Successful", f"Welcome, {username}")
             app.destroy()  # Close the login window
-            student_page.open_student_page()  # Open the student page
+            student_page.open_student_page(user_id)  # Open the student page with user_id
         else:
             # Login failed
             messagebox.showerror("Login Failed", "Invalid username or password")
@@ -70,7 +65,7 @@ def open_create_account_window():
     # Create a new window for creating an account
     create_account_window = tk.Toplevel(app)
     create_account_window.title("Create Account")
-    create_account_window.geometry("400x500")
+    create_account_window.geometry("400x400")
     create_account_window.configure(bg="#ffffff")  # Set background to white
 
     # Add title label
@@ -105,33 +100,12 @@ def open_create_account_window():
     contact_entry = tk.Entry(frame, font=("Arial", 12), width=30)
     contact_entry.grid(row=3, column=1, padx=10, pady=5)
 
-    # Car Type Label and Entry
-    car_type_label = tk.Label(frame, text="Car Type:", font=("Arial", 12), bg="#ffffff")
-    car_type_label.grid(row=4, column=0, padx=10, pady=5, sticky="e")
-    car_type_entry = tk.Entry(frame, font=("Arial", 12), width=30)
-    car_type_entry.grid(row=4, column=1, padx=10, pady=5)
-
-    # Car Name Label and Entry
-    car_name_label = tk.Label(frame, text="Car Name:", font=("Arial", 12), bg="#ffffff")
-    car_name_label.grid(row=5, column=0, padx=10, pady=5, sticky="e")
-    car_name_entry = tk.Entry(frame, font=("Arial", 12), width=30)
-    car_name_entry.grid(row=5, column=1, padx=10, pady=5)
-
-    # Car Plate Label and Entry
-    car_plate_label = tk.Label(frame, text="Car Plate:", font=("Arial", 12), bg="#ffffff")
-    car_plate_label.grid(row=6, column=0, padx=10, pady=5, sticky="e")
-    car_plate_entry = tk.Entry(frame, font=("Arial", 12), width=30)
-    car_plate_entry.grid(row=6, column=1, padx=10, pady=5)
-
     # Function to handle account creation
     def create_account():
         email = email_entry.get()
         username = username_entry.get()
         password = password_entry.get()
         contact = contact_entry.get()
-        car_type = car_type_entry.get()
-        car_name = car_name_entry.get()
-        car_plate = car_plate_entry.get()
 
         # Validate inputs
         if not email.endswith('@student.newinti.edu.my'):
@@ -145,10 +119,10 @@ def open_create_account_window():
         try:
             # Insert new user into the database
             sql = """
-                INSERT INTO User (email, username, password, contact, car_type, car_name, car_plate)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO User (email, username, password, contact)
+                VALUES (%s, %s, %s, %s)
             """
-            values = (email, username, password, contact, car_type, car_name, car_plate)
+            values = (email, username, password, contact)
             mysqlcursor.execute(sql, values)
             mysqldb.commit()
 
@@ -162,8 +136,6 @@ def open_create_account_window():
     create_account_button = tk.Button(create_account_window, text="Create Account", font=("Arial", 12),
                                        bg="green", fg="white", command=create_account)
     create_account_button.pack(pady=20)
-
-
 
 def open_forgot_password_window():
     # Create a pop-up window for "Forgot Password"
@@ -192,7 +164,6 @@ def open_forgot_password_window():
     reset_button = tk.Button(forgot_password_window, text="Reset Password", font=("Arial", 12),
                              bg="blue", fg="white", command=reset_password)
     reset_button.pack(pady=20)
-
 
 # Create the main window
 app = tk.Tk()
