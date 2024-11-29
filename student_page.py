@@ -67,7 +67,7 @@ def open_student_page(user_id):
     def show_join_carpool_page():
         hide_all_frames()
         join_carpool_frame.pack()
-        page_title_label.config(text="Join Carpool")
+        page_title_label.config(text="Joined Carpool")
 
     def show_manage_carpool_page():
         hide_all_frames()
@@ -93,7 +93,7 @@ def open_student_page(user_id):
         dropoff_hour = carpool_form_entries["carpool_dropoff_hour_entry"].get()
         dropoff_minute = carpool_form_entries["carpool_dropoff_minute_entry"].get()
         dropoff_time = f"{dropoff_hour}:{dropoff_minute}"
-        status = "available"
+        status = "Available"
 
         # Combine pickup date and time
         pickup_time = f"{pickup_hour}:{pickup_minute}"
@@ -268,7 +268,7 @@ def open_student_page(user_id):
     create_carpool_nav_button = tk.Button(navbar_frame, text="Create Carpool", command=show_create_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     create_carpool_nav_button.pack(side="left", padx=10, pady=10)
 
-    join_button = tk.Button(navbar_frame, text="Join Carpool", command=show_join_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
+    join_button = tk.Button(navbar_frame, text="Joined Carpool", command=show_join_carpool_page, font=button_font, bg=button_bg, fg=button_fg, bd=0)
     join_button.pack(side="left", padx=10)
     # Dropdown menu for "My Profile"
     profile_menu = tk.Menubutton(navbar_frame, text="My Profile", font=button_font, bg=button_bg, fg=button_fg, bd=0, relief="flat")

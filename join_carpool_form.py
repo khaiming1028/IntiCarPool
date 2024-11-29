@@ -58,7 +58,7 @@ def join_carpool_form(parent_frame, user_id):
             status_label.grid(row=row_num, column=6, padx=5, pady=5, sticky="ew")
 
             # Add action button based on status
-            if row[8] == "joined":
+            if row[8] == "Joined":
                 leave_button = tk.Button(parent_frame, text="Leave", font=("Arial", 12), bg="red", fg="white", command=lambda r=row: confirm_leave_carpool(r, user_id, parent_frame))
                 leave_button.grid(row=row_num, column=7, padx=15, pady=5, sticky="ew")
             else:

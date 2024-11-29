@@ -112,7 +112,7 @@ def search_carpool_form(parent_frame, user_id):
         
         
     def request_carpool(carpool_id,user_id):
-        status = "pending"
+        status = "Pending"
         try:
             # Connect to the MySQL database
             db_connection = mysql.connector.connect(

@@ -52,13 +52,13 @@ def manage_carpool_form(parent_frame, user_id):
                 cell_label.grid(row=row_num, column=col_num, padx=5, pady=5, sticky="ew")
 
             # Add action buttons
-            edit_button = tk.Button(parent_frame, text="Edit", font=("Arial", 12), command=lambda r=row: open_edit_popup(r[0]))
+            edit_button = tk.Button(parent_frame, text="Edit", font=("Arial", 12), command=lambda r=row: open_edit_popup(r[0], parent_frame, user_id))
             edit_button.grid(row=row_num, column=6, padx=5, pady=5, sticky="ew")
 
-            view_passenger_button = tk.Button(parent_frame, text="View Passenger", font=("Arial", 12), bg="blue", fg="white", command=lambda r=row: view_passenger(r))
+            view_passenger_button = tk.Button(parent_frame, text="View Passenger", font=("Arial", 12), bg="blue", fg="white", command=lambda r=row: view_passenger(r[0]))
             view_passenger_button.grid(row=row_num, column=7, padx=5, pady=5, sticky="ew")
 
-            delete_button = tk.Button(parent_frame, text="Delete", font=("Arial", 12), bg="#E21A22", fg="white", command=lambda r=row: delete_carpool(r))
+            delete_button = tk.Button(parent_frame, text="Delete", font=("Arial", 12), bg="#E21A22", fg="white", command=lambda r=row: delete_carpool(r, parent_frame, user_id))
             delete_button.grid(row=row_num, column=8, padx=(5,10), pady=5, sticky="ew")
 
         # Close the database connection
@@ -68,7 +68,7 @@ def manage_carpool_form(parent_frame, user_id):
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Error: {err}")
 
-def open_edit_popup(carpool_id):
+def open_edit_popup(carpool_id, parent_frame, user_id):
     # Create a popup window
     edit_popup = tk.Toplevel()
     edit_popup.title("Edit Carpool")
@@ -106,7 +106,7 @@ def open_edit_popup(carpool_id):
         return
 
     # Populate the form with existing carpool details
-    carpool_form_entries = create_carpool_form(edit_frame, lambda: update_carpool(carpool_id, carpool_form_entries, edit_popup), lambda: search_from_google_map(edit_frame, carpool_form_entries))
+    carpool_form_entries = create_carpool_form(edit_frame, lambda: update_carpool(carpool_id, carpool_form_entries, edit_popup, parent_frame, user_id), lambda: search_from_google_map(edit_frame, carpool_form_entries))
 
     carpool_form_entries["carpool_name_entry"].insert(0, carpool[0])
     carpool_form_entries["carpool_available_seat_entry"].insert(0, carpool[1])
@@ -194,7 +194,7 @@ def search_from_google_map(parent_frame, carpool_form_entries):
     confirm_button = tk.Button(google_map_page, text="Set as Pickup Point", command=set_pickup_location)
     confirm_button.pack(pady=10)
 
-def update_carpool(carpool_id, carpool_form_entries, edit_popup):
+def update_carpool(carpool_id, carpool_form_entries, edit_popup, parent_frame, user_id):
     # Get user input
     carpool_name = carpool_form_entries["carpool_name_entry"].get()
     available_seat = carpool_form_entries["carpool_available_seat_entry"].get()
@@ -205,7 +205,7 @@ def update_carpool(carpool_id, carpool_form_entries, edit_popup):
     dropoff_hour = carpool_form_entries["carpool_dropoff_hour_entry"].get()
     dropoff_minute = carpool_form_entries["carpool_dropoff_minute_entry"].get()
     dropoff_time = f"{dropoff_hour}:{dropoff_minute}"
-    status = "available"
+    status = "Available"
 
     # Combine pickup date and time
     pickup_time = f"{pickup_hour}:{pickup_minute}"
@@ -245,6 +245,11 @@ def update_carpool(carpool_id, carpool_form_entries, edit_popup):
         # Close the popup window
         edit_popup.destroy()
 
+        # Refresh the parent frame to reflect the changes
+        for widget in parent_frame.winfo_children():
+            widget.destroy()
+        manage_carpool_form(parent_frame, user_id)
+
         # Close the database connection
         cursor.close()
         db_connection.close()
@@ -252,119 +257,92 @@ def update_carpool(carpool_id, carpool_form_entries, edit_popup):
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Error updating data: {err}")
 
-def view_passenger(carpool_application):
-    user_id = carpool_application[1]
-    carpool_id = carpool_application[2]
+def view_passenger(carpool_id):
     # Function to view passengers of the selected carpool
     try:
-            # Connect to the MySQL database
-            db_connection = mysql.connector.connect(
-                host="localhost",  # Your XAMPP MySQL host
-                user="root",  # Your MySQL username
-                password="",  # Your MySQL password (default is empty for XAMPP)
-                database="carpool_system"  # Your database name
-            )
-            cursor = db_connection.cursor()
+        # Connect to the MySQL database
+        db_connection = mysql.connector.connect(
+            host="localhost",  # Your XAMPP MySQL host
+            user="root",  # Your MySQL username
+            password="",  # Your MySQL password (default is empty for XAMPP)
+            database="carpool_system"  # Your database name
+        )
+        cursor = db_connection.cursor()
 
-            # Query to delete the carpool
-            query = """
-                    SELECT u.username, u.email, u.contact
-                    FROM carpool_application p
-                    JOIN user u ON p.user_id = u.id;
-                    WHERE id = %s" AND status = 'pending'
-            """
-            cursor.execute(query, (user_id,))
-            # Fetch the result
-            result = cursor.fetchone()
-            if result:
-                username, email, contact_number = result
-                display_user_details(username, email, contact_number, user_id, carpool_id)
-            else:
-                print("No passenger found for this user ID.")
-                
-            cursor.close()
-            
+        # Query to fetch passengers who requested to join the carpool
+        query = """
+            SELECT u.username, u.email, u.contact, ca.status, ca.id
+            FROM carpool_application ca
+            JOIN user u ON ca.user_id = u.id
+            WHERE ca.carpool_id = %s
+        """
+        cursor.execute(query, (carpool_id,))
+        passengers = cursor.fetchall()
+
+        # Close the database connection
+        cursor.close()
+        db_connection.close()
+
+        if not passengers:
+            messagebox.showinfo("No Passengers", "No passengers have requested to join this carpool.")
+            return
+
+        # Create a new window to display passenger details
+        passenger_window = tk.Toplevel()
+        passenger_window.title("Passengers")
+
+        for passenger in passengers:
+            username, email, contact, status, application_id = passenger
+            passenger_frame = tk.Frame(passenger_window, bg="#ffffff", padx=10, pady=10)
+            passenger_frame.pack(fill="x", pady=5)
+
+            tk.Label(passenger_frame, text=f"Username: {username}", font=("Arial", 12), bg="#ffffff").pack(anchor="w")
+            tk.Label(passenger_frame, text=f"Email: {email}", font=("Arial", 12), bg="#ffffff").pack(anchor="w")
+            tk.Label(passenger_frame, text=f"Contact: {contact}", font=("Arial", 12), bg="#ffffff").pack(anchor="w")
+            tk.Label(passenger_frame, text=f"Status: {status}", font=("Arial", 12), bg="#ffffff").pack(anchor="w")
+
+            if status == "Pending":
+                approve_button = tk.Button(passenger_frame, text="Approve", font=("Arial", 12), bg="green", fg="white", command=lambda aid=application_id: update_application_status(aid, "Joined", passenger_window))
+                approve_button.pack(side="left", padx=5)
+
+                decline_button = tk.Button(passenger_frame, text="Decline", font=("Arial", 12), bg="red", fg="white", command=lambda aid=application_id: update_application_status(aid, "Declined", passenger_window))
+                decline_button.pack(side="left", padx=5)
+
     except mysql.connector.Error as err:
-        messagebox.showerror("Database Error", f"Error finding data: {err}")
- 
-def display_user_details(username, email, contact_number, user_id, carpool_id):
-    # Create a new window (pop-up UI)
-    window = tk.Tk()
-    window.title("Passenger Details")
+        messagebox.showerror("Database Error", f"Error fetching data: {err}")
 
-    # Label to display user information
-    tk.Label(window, text=f"Username: {username}").pack()
-    tk.Label(window, text=f"Email: {email}").pack()
-    tk.Label(window, text=f"Contact Number: {contact_number}").pack()
+def update_application_status(application_id, status, passenger_window):
+    # Function to update the status of a carpool application
+    try:
+        # Connect to the MySQL database
+        db_connection = mysql.connector.connect(
+            host="localhost",  # Your XAMPP MySQL host
+            user="root",  # Your MySQL username
+            password="",  # Your MySQL password (default is empty for XAMPP)
+            database="carpool_system"  # Your database name
+        )
+        cursor = db_connection.cursor()
 
-    # Buttons for approval and decline
-    approve_button = tk.Button(window, text="Approve", command=lambda: approved_button(carpool_id, "approved", window))
-    approve_button.pack(side=tk.LEFT, padx=10, pady=10)
+        # Update the status in the carpool_application table
+        update_query = """
+            UPDATE carpool_application
+            SET status = %s
+            WHERE id = %s
+        """
+        cursor.execute(update_query, (status, application_id))
+        db_connection.commit()
 
-    decline_button = tk.Button(window, text="Decline", command=lambda: declined_button(carpool_id, "declined", window))
-    decline_button.pack(side=tk.LEFT, padx=10, pady=10)
+        # Close the database connection
+        cursor.close()
+        db_connection.close()
 
-    # Run the UI window
-    window.mainloop()
-    
-def approved_button(carpool_id, status, window):
-    # Connect to the MySQL database
-    db_connection = mysql.connector.connect(
-                host="localhost",  # Your XAMPP MySQL host
-                user="root",  # Your MySQL username
-                password="",  # Your MySQL password (default is empty for XAMPP)
-                database="carpool_system"  # Your database name
-            )
-    cursor = db_connection.cursor()
-    
-    # Update the status in the carpool_application table
-    update_query = """
-                    UPDATE carpool_application
-                    SET status = %s
-                    WHERE carpool_id = %s AND status = 'pending'
-    """
-    
-    # Execute the update query
-    cursor.execute(update_query, (status, carpool_id))
-    db_connection.commit()
-    db_connection.close()
+        messagebox.showinfo("Status Updated", f"Application has been {status}.")
+        passenger_window.destroy()
 
-    # Inform the user about the update
-    messagebox.showinfo("Status Updated", f"Application has been {status}.")
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error updating data: {err}")
 
-    # Close the pop-up window
-    window.destroy()
-
-def declined_button(carpool_id, status, window):
-    # Connect to the MySQL database
-    db_connection = mysql.connector.connect(
-                host="localhost",  # Your XAMPP MySQL host
-                user="root",  # Your MySQL username
-                password="",  # Your MySQL password (default is empty for XAMPP)
-                database="carpool_system"  # Your database name
-            )
-    cursor = db_connection.cursor()
-    
-    # Update the status in the carpool_application table
-    update_query = """
-                    UPDATE carpool_application
-                    SET status = %s
-                    WHERE carpool_id = %s AND status = 'pending'
-    """
-    
-    # Execute the update query
-    cursor.execute(update_query, (status, carpool_id))
-    db_connection.commit()
-    db_connection.close()
-
-    # Inform the user about the update
-    messagebox.showinfo("Status Updated", f"Application has been {status}.")
-
-    # Close the pop-up window
-    window.destroy()
-
-               
-def delete_carpool(carpool):
+def delete_carpool(carpool, parent_frame, user_id):
     # Function to delete the selected carpool from the database
     carpool_id = carpool[0]
     
@@ -394,6 +372,11 @@ def delete_carpool(carpool):
 
             # Show success message
             messagebox.showinfo("Success", "Carpool deleted successfully!")
+
+            # Refresh the parent frame to reflect the changes
+            for widget in parent_frame.winfo_children():
+                widget.destroy()
+            manage_carpool_form(parent_frame, user_id)
             
         except mysql.connector.Error as err:
             messagebox.showerror("Database Error", f"Error deleting data: {err}")
