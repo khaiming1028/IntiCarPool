@@ -97,32 +97,40 @@ def open_edit_popup(carpool_id, parent_frame, user_id):
         cursor.execute(query, (carpool_id,))
         carpool = cursor.fetchone()
 
-        # Close the database connection
-        cursor.close()
-        db_connection.close()
+        # Check if the pickup date is in the past
+        pickup_datetime = carpool[3]  # Already a datetime object
+        if pickup_datetime < datetime.now():
+            messagebox.showerror("Error", "Cannot edit a past carpool.")
+            edit_popup.destroy()
+            return
+
+        # Populate the form with existing carpool details
+        carpool_form_entries = create_carpool_form(edit_frame, lambda: update_carpool(carpool_id, carpool_form_entries, edit_popup, parent_frame, user_id), lambda: search_from_google_map(edit_frame, carpool_form_entries))
+
+        carpool_form_entries["carpool_name_entry"].insert(0, carpool[0])
+        carpool_form_entries["carpool_available_seat_entry"].insert(0, carpool[1])
+        carpool_form_entries["carpool_pickup_point_entry"].insert(0, carpool[2])
+        pickup_date = pickup_datetime.date()
+        pickup_time = pickup_datetime.time()
+        carpool_form_entries["carpool_pickup_date_entry"].set_date(pickup_date)
+        pickup_hour, pickup_minute = pickup_time.hour, pickup_time.minute
+        carpool_form_entries["carpool_pickup_hour_entry"].delete(0, tk.END)
+        carpool_form_entries["carpool_pickup_hour_entry"].insert(0, f"{pickup_hour:02d}")
+        carpool_form_entries["carpool_pickup_minute_entry"].delete(0, tk.END)
+        carpool_form_entries["carpool_pickup_minute_entry"].insert(0, f"{pickup_minute:02d}")
+        dropoff_hour, dropoff_minute = carpool[4].split(":")
+        carpool_form_entries["carpool_dropoff_hour_entry"].delete(0, tk.END)
+        carpool_form_entries["carpool_dropoff_hour_entry"].insert(0, dropoff_hour)
+        carpool_form_entries["carpool_dropoff_minute_entry"].delete(0, tk.END)
+        carpool_form_entries["carpool_dropoff_minute_entry"].insert(0, dropoff_minute)
 
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Error fetching data: {err}")
+        edit_popup.destroy()
         return
-
-    # Populate the form with existing carpool details
-    carpool_form_entries = create_carpool_form(edit_frame, lambda: update_carpool(carpool_id, carpool_form_entries, edit_popup, parent_frame, user_id), lambda: search_from_google_map(edit_frame, carpool_form_entries))
-
-    carpool_form_entries["carpool_name_entry"].insert(0, carpool[0])
-    carpool_form_entries["carpool_available_seat_entry"].insert(0, carpool[1])
-    carpool_form_entries["carpool_pickup_point_entry"].insert(0, carpool[2])
-    pickup_date, pickup_time = carpool[3].split()
-    carpool_form_entries["carpool_pickup_date_entry"].set_date(pickup_date)
-    pickup_hour, pickup_minute = pickup_time.split(":")
-    carpool_form_entries["carpool_pickup_hour_entry"].delete(0, tk.END)
-    carpool_form_entries["carpool_pickup_hour_entry"].insert(0, pickup_hour)
-    carpool_form_entries["carpool_pickup_minute_entry"].delete(0, tk.END)
-    carpool_form_entries["carpool_pickup_minute_entry"].insert(0, pickup_minute)
-    dropoff_hour, dropoff_minute = carpool[4].split(":")
-    carpool_form_entries["carpool_dropoff_hour_entry"].delete(0, tk.END)
-    carpool_form_entries["carpool_dropoff_hour_entry"].insert(0, dropoff_hour)
-    carpool_form_entries["carpool_dropoff_minute_entry"].delete(0, tk.END)
-    carpool_form_entries["carpool_dropoff_minute_entry"].insert(0, dropoff_minute)
+    finally:
+        cursor.close()
+        db_connection.close()
 
 def search_from_google_map(parent_frame, carpool_form_entries):
     google_map_page = tk.Toplevel(parent_frame)
