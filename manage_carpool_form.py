@@ -330,6 +330,44 @@ def update_application_status(application_id, status, passenger_window):
             WHERE id = %s
         """
         cursor.execute(update_query, (status, application_id))
+        
+         # If status is "Joined", decrement the available seats
+        if status == "Joined":
+            # Fetch the carpool_id associated with the application
+            fetch_carpool_id_query = """
+                SELECT carpool_id
+                FROM carpool_application
+                WHERE id = %s
+            """
+            cursor.execute(fetch_carpool_id_query, (application_id,))
+            carpool_id = cursor.fetchone()[0]
+
+            # Decrement the available seats in the carpool table
+            decrement_seat_query = """
+                UPDATE carpool
+                SET available_seat = available_seat - 1
+                WHERE id = %s AND available_seat > 0
+            """
+            cursor.execute(decrement_seat_query, (carpool_id,))
+            
+            # Check if the updated available_seat is now 0
+            check_seat_query = """
+                SELECT available_seat
+                FROM carpool
+                WHERE id = %s
+            """
+            cursor.execute(check_seat_query, (carpool_id,))
+            available_seat = cursor.fetchone()[0]
+
+            # If available_seat is 0, update status to 'Full'
+            if available_seat == 0:
+                update_status_query = """
+                    UPDATE carpool
+                    SET status = 'Full'
+                    WHERE id = %s
+                """
+                cursor.execute(update_status_query, (carpool_id,))
+        
         db_connection.commit()
 
         # Close the database connection
@@ -358,6 +396,9 @@ def delete_carpool(carpool, parent_frame, user_id):
                 database="carpool_system"  # Your database name
             )
             cursor = db_connection.cursor()
+            
+            query_delete_applications = "DELETE FROM carpool_application WHERE carpool_id = %s"
+            cursor.execute(query_delete_applications, (carpool_id,))
 
             # Query to delete the carpool
             query = "DELETE FROM carpool WHERE id = %s"
