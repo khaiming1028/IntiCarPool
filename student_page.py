@@ -9,7 +9,7 @@ import requests
 from create_carpool_form import create_carpool_form  # Import the create_carpool_form function
 from search_carpool_form import search_carpool_form  # Import the search_carpool_form function
 from profile_form import create_profile_form  # Import the create_profile_form function
-from join_carpool_form import join_carpool_form  # Import the join_carpool_form function
+from join_carpool_form import join_carpool_form  # Import the updated join_carpool_form function
 from manage_carpool_form import manage_carpool_form  # Import the manage_carpool_form function
 
 GOOGLE_API_KEY = "AIzaSyC4GMTOjpDLoMQsQKBc1y64bPTwJFsPgBg"
@@ -317,7 +317,7 @@ def open_student_page(user_id):
     
     # Join Carpool frame
     join_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")
-    join_carpool_form_entries = join_carpool_form(join_carpool_frame)
+    join_carpool_form(join_carpool_frame, user_id)  # Pass user_id to join_carpool_form
 
     # Manage Carpool frame
     manage_carpool_frame = tk.Frame(carpool_app, bg="#ffffff")

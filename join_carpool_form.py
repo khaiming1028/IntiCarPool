@@ -1,84 +1,111 @@
+# join_carpool_form.py
+
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox
+import mysql.connector
+import textwrap
 
-def join_carpool_form(parent_frame):
-    # Treeview/Table for carpool details
-    columns = (
-        "Name", "Contact Number", "Car Details","Pickup Date & Time", "Departure Time", "Pickup Point","Status", "Action"
-    )
-    carpool_table = ttk.Treeview(parent_frame, columns=columns, show="headings", height=10)
-    carpool_table.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
-    # Define column headings with bold styling and set background color for the title row
-    style = ttk.Style()
-    
-    # Update style to force header background color to #666666 and text color to white
-    style.configure("Treeview.Heading",font=("Arial", 10, "bold"),background="#666666",foreground="white")
-    
-    # Use a different theme to avoid OS default style interfering (if needed)
-    style.theme_use('clam')
+def join_carpool_form(parent_frame, user_id):
+    # Define headers
+    headers = ["Driver Name", "Contact No.", "Car Details", "Pickup Date & Time", "Dropoff Time", "Pickup Point", "Status", "Action"]
+    for col, header in enumerate(headers):
+        header_label = tk.Label(parent_frame, text=header, font=("Arial", 12, "bold"), bg="#666666", fg="#ffffff", padx=10, pady=10)
+        header_label.grid(row=0, column=col, pady=(0,10), sticky="ew")
 
-    for col in columns:
-        carpool_table.heading(col, text=col)
-        carpool_table.column(col, anchor="center", stretch=True)
+    try:
+        # Connect to the MySQL database
+        db_connection = mysql.connector.connect(
+            host="localhost",  # Your XAMPP MySQL host
+            user="root",  # Your MySQL username
+            password="",  # Your MySQL password (default is empty for XAMPP)
+            database="carpool_system"  # Your database name
+        )
+        cursor = db_connection.cursor()
 
-    # Example data
-    data = [
-        ["Tan Mei Ling", "016-8762536", "PPP1234 SAGA (Sedan)",
-         "20/11/24 11.00AM", "12.00PM", "Jelutong", "Pending"],
-        ["Lim Yong Xiang", "012-7834912", "PAA8643 MYVI (Sedan)",
-         "21/11/24 10.00AM", "10.30AM", "Sungai Dua", "3/4"],
-        ["Razak bin Osman", "012-9172634", "PBB8125 SERENA (MPV)",
-         "4/11/24 1.00PM", "1.30PM", "Gelugor", "Completed"]
-    ]
+        # Query the database to get carpool details where the user has applied
+        query = """
+            SELECT u.username, u.contact, u.car_plate, u.car_type, u.car_name, c.pickup_datetime, c.dropoff_time, c.pickup_point, ca.status, ca.id
+            FROM carpool c
+            JOIN user u ON c.driver_id = u.id
+            JOIN carpool_application ca ON c.id = ca.carpool_id
+            WHERE ca.user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        results = cursor.fetchall()
 
-    # Add data and dynamically insert buttons
-    action_buttons = []  # To store buttons for proper management
-    for i, row in enumerate(data):
-        # Insert row data (except for Action column)
-        row_id = carpool_table.insert("", "end", iid=i, values=row[:-1])
+        # Display the carpool details in a table view
+        for row_num, row in enumerate(results, start=1):
+            driver_name_label = tk.Label(parent_frame, text=row[0], font=("Arial", 12), bg="#ffffff", justify="left")
+            driver_name_label.grid(row=row_num, column=0, padx=5, pady=5, sticky="ew")
 
-        # Create Action Button dynamically
-        status = row[-1]
+            contact_no_label = tk.Label(parent_frame, text=row[1], font=("Arial", 12), bg="#ffffff", justify="left")
+            contact_no_label.grid(row=row_num, column=1, padx=5, pady=5, sticky="ew")
 
-        if status == "3/4":  # Add Leave button for 3/4 status
-            btn = tk.Button(
-                parent_frame,text="Leave",font=("Arial", 10),bg="#E21A22",fg="white",command=lambda r=row: leave_action(r),width=8)
-            action_buttons.append((i, btn))
+            car_details = f"{row[2]}\n{row[3]}\n{row[4]}"  # Combine car plate, car type, and car name
+            car_details_label = tk.Label(parent_frame, text=car_details, font=("Arial", 12), bg="#ffffff", justify="left")
+            car_details_label.grid(row=row_num, column=2, padx=5, pady=5, sticky="ew")
 
-        elif status == "Completed":  # Add Rate button for Completed status
-            btn = tk.Button(parent_frame,text="Rate",font=("Arial", 10),bg="#0056D2",fg="white",command=lambda r=row: rate_action(r),width=8)
-            action_buttons.append((i, btn))
+            pickup_datetime_label = tk.Label(parent_frame, text=row[5], font=("Arial", 12), bg="#ffffff", justify="left")
+            pickup_datetime_label.grid(row=row_num, column=3, padx=5, pady=5, sticky="ew")
 
-    # Place Action buttons in the correct positions
-    def update_button_positions():
-        for i, btn in action_buttons:
-            bbox = carpool_table.bbox(i, column=len(columns) - 1)  # Get Action column's bbox
-            if bbox:
-                x, y, width, height = bbox
-                btn.place(x=x + carpool_table.winfo_x(), y=y + carpool_table.winfo_y(), width=width, height=height)
+            dropoff_time_label = tk.Label(parent_frame, text=row[6], font=("Arial", 12), bg="#ffffff", justify="left")
+            dropoff_time_label.grid(row=row_num, column=4, padx=5, pady=5, sticky="ew")
 
-    # Update button positions on resize or scroll
-    carpool_table.bind("<Configure>", lambda event: update_button_positions())
-    carpool_table.bind("<Motion>", lambda event: update_button_positions())
+            pickup_point_label = tk.Label(parent_frame, text=textwrap.fill(row[7], width=20), font=("Arial", 12), bg="#ffffff", justify="left", wraplength=200)
+            pickup_point_label.grid(row=row_num, column=5, padx=5, pady=5, sticky="ew")
 
-    # Define button actions
-    def leave_action(row):
-        print(f"Leave button clicked for: {row[0]} ({row[2]})")
+            status_label = tk.Label(parent_frame, text=row[8], font=("Arial", 12), bg="#ffffff", justify="left")
+            status_label.grid(row=row_num, column=6, padx=5, pady=5, sticky="ew")
 
-    def rate_action(row):
-        print(f"Rate button clicked for: {row[0]} ({row[2]})")
+            # Add action button based on status
+            if row[8] == "joined":
+                leave_button = tk.Button(parent_frame, text="Leave", font=("Arial", 12), bg="red", fg="white", command=lambda r=row: confirm_leave_carpool(r, user_id, parent_frame))
+                leave_button.grid(row=row_num, column=7, padx=15, pady=5, sticky="ew")
+            else:
+                action_label = tk.Label(parent_frame, text="", font=("Arial", 12), bg="#ffffff", justify="left")
+                action_label.grid(row=row_num, column=7, padx=15, pady=5, sticky="ew")
 
-# Example for creating a standalone window
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Join Carpool")
-    root.geometry("1000x600")
-    root.configure(bg="#ffffff")
+        # Close the database connection
+        cursor.close()
+        db_connection.close()
 
-    # Create a frame for the carpool page
-    carpool_frame = tk.Frame(root, bg="#ffffff")
-    carpool_frame.pack(fill="both", expand=True)
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error: {err}")
 
-    join_carpool_form(carpool_frame)
+def confirm_leave_carpool(carpool, user_id, parent_frame):
+    # Function to confirm leaving the carpool
+    carpool_application_id = carpool[9]
+    response = messagebox.askyesno("Confirm Leave", "Are you sure you want to leave this carpool?")
+    if response:
+        leave_carpool(carpool_application_id, parent_frame, user_id)
 
-    root.mainloop()
+def leave_carpool(carpool_application_id, parent_frame, user_id):
+    # Function to handle leaving the carpool
+    try:
+        # Connect to the MySQL database
+        db_connection = mysql.connector.connect(
+            host="localhost",  # Your XAMPP MySQL host
+            user="root",  # Your MySQL username
+            password="",  # Your MySQL password (default is empty for XAMPP)
+            database="carpool_system"  # Your database name
+        )
+        cursor = db_connection.cursor()
+
+        # Delete the carpool application from the database
+        delete_query = "DELETE FROM carpool_application WHERE id = %s"
+        cursor.execute(delete_query, (carpool_application_id,))
+        db_connection.commit()
+
+        # Refresh the parent frame to reflect the changes
+        for widget in parent_frame.winfo_children():
+            widget.destroy()
+        join_carpool_form(parent_frame, user_id)
+
+        # Close the database connection
+        cursor.close()
+        db_connection.close()
+
+        messagebox.showinfo("Leave Carpool", "You have successfully left the carpool.")
+
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error: {err}")
